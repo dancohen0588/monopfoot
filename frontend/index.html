@@ -241,6 +241,25 @@
       cursor: not-allowed;
     }
 
+    .btn .spinner {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: var(--white);
+      animation: spin 0.7s linear infinite;
+    }
+
+    .btn-secondary .spinner,
+    .btn-muted .spinner {
+      border-color: rgba(255,122,26,0.3);
+      border-top-color: var(--brand);
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     /* ==========================================================================
        TABLES
        ========================================================================== */
@@ -471,6 +490,17 @@
       transition: transform 150ms ease;
     }
 
+    .modal.modal-compo {
+      width: min(1040px, 94vw);
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal.modal-compo .modal-body {
+      overflow: auto;
+    }
+
     .modal-backdrop.show .modal { transform: translateY(0); }
 
     .modal-header {
@@ -592,6 +622,10 @@
       align-items: center;
       gap: 6px;
       cursor: grab;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .bench-chip.dragging {
@@ -643,6 +677,10 @@
       font-size: 0.8rem;
       color: var(--text-muted);
       padding: 6px;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .slot.filled {
@@ -669,6 +707,12 @@
     @media (max-width: 900px) {
       .compo-grid {
         grid-template-columns: 1fr;
+      }
+
+      .modal.modal-compo {
+        width: 94vw;
+        height: 90vh;
+        max-height: 90vh;
       }
     }
 
@@ -970,8 +1014,8 @@
             <input id="matchLocation" name="location" type="text" required>
           </div>
           <div class="form-group">
-            <label for="matchReservation">Réservation</label>
-            <input id="matchReservation" name="reservation_url" type="url" placeholder="Lien UrbanSoccer…">
+            <label for="matchReservation">Réservation <span class="helper-text">(optionnel)</span></label>
+            <input id="matchReservation" name="reservation_url" type="text" placeholder="Lien UrbanSoccer…">
           </div>
 
           <div class="roster-title">Joueurs sélectionnés (<span id="rosterCount">0</span>/10)</div>
@@ -1158,12 +1202,21 @@
       });
     }
 
+    function buildIdempotencyKey() {
+      if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+      return `idemp-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
     async function savePlayer(payload, playerId = null) {
       const method = playerId ? 'PUT' : 'POST';
       const url = playerId ? `${API_PLAYERS}/${playerId}` : API_PLAYERS;
+      const headers = { 'Content-Type': 'application/json' };
+      if (method === 'POST') {
+        headers['X-Idempotency-Key'] = buildIdempotencyKey();
+      }
       await fetchJson(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
     }
@@ -1179,9 +1232,13 @@
     async function saveMatch(payload, matchId = null) {
       const method = matchId ? 'PUT' : 'POST';
       const url = matchId ? `${API_MATCHES}/${matchId}` : API_MATCHES;
+      const headers = { 'Content-Type': 'application/json' };
+      if (method === 'POST') {
+        headers['X-Idempotency-Key'] = buildIdempotencyKey();
+      }
       await fetchJson(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(payload)
       });
     }
@@ -1558,7 +1615,7 @@
       }
 
       openCompoBtn.style.display = rosterState.selectedIds.length === 10 ? 'inline-flex' : 'none';
-      saveBtn.disabled = rosterState.selectedIds.length !== 10;
+      saveBtn.disabled = false;
     }
 
     function resetCompoState() {
@@ -1624,7 +1681,7 @@
         ? benchPlayers.map(player => {
             const isActive = compoState.activePlayerId === player.id;
             return `
-              <div class="bench-chip ${isActive ? 'active' : ''}" draggable="true" data-player-id="${player.id}">
+              <div class="bench-chip ${isActive ? 'active' : ''}" draggable="true" data-player-id="${player.id}" title="${player.name}">
                 ${player.name}
               </div>
             `;
@@ -1637,7 +1694,7 @@
         const label = player ? player.name : `Slot ${index + 1}`;
         const filledClass = player ? 'filled' : '';
         return `
-          <div class="slot ${filledClass}" data-team="${teamKey}" data-index="${index}">
+          <div class="slot ${filledClass}" data-team="${teamKey}" data-index="${index}" title="${player ? player.name : ''}">
             ${label}
           </div>
         `;
@@ -1768,7 +1825,6 @@
 
       document.getElementById('openCompoBtn').addEventListener('click', () => {
         if (rosterState.selectedIds.length !== 10) {
-          showRosterError('Le roster doit contenir exactement 10 joueurs.');
           return;
         }
         if (!rosterState.matchId) {
@@ -1798,12 +1854,19 @@
         renderCompo();
       });
 
+      const compoSaveBtn = document.getElementById('compoSaveBtn');
+      const compoSaveBaseLabel = compoSaveBtn.textContent;
+      let isSavingCompo = false;
+
       document.getElementById('compoSaveBtn').addEventListener('click', async () => {
-        if (!isCompoComplete()) return;
+        if (isSavingCompo || !isCompoComplete()) return;
         if (!rosterState.matchId) {
           showToast('Enregistre le match avant la composition.');
           return;
         }
+        isSavingCompo = true;
+        compoSaveBtn.disabled = true;
+        compoSaveBtn.innerHTML = `<span class="spinner"></span> Enregistrement...`;
         try {
           await saveCompo(rosterState.matchId, buildCompoPayload());
           await initData();
@@ -1811,6 +1874,10 @@
           closeCompoModal();
         } catch (error) {
           showToast(error.message || 'Erreur lors de la sauvegarde.');
+        } finally {
+          isSavingCompo = false;
+          compoSaveBtn.innerHTML = compoSaveBaseLabel;
+          compoSaveBtn.disabled = !isCompoComplete();
         }
       });
 
@@ -1863,8 +1930,13 @@
         scoreModal.classList.add('show');
       };
 
+      const savePlayerBtn = document.getElementById('savePlayerBtn');
+      const savePlayerBaseLabel = savePlayerBtn.textContent;
+      let isSavingPlayer = false;
+
       playerForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (isSavingPlayer) return;
         const payload = {
           first_name: document.getElementById('firstName').value.trim(),
           last_name: document.getElementById('lastName').value.trim(),
@@ -1883,6 +1955,9 @@
         }
 
         try {
+          isSavingPlayer = true;
+          savePlayerBtn.disabled = true;
+          savePlayerBtn.innerHTML = `<span class="spinner"></span> Enregistrement...`;
           const mode = playerForm.dataset.mode;
           const id = playerForm.dataset.entityId || null;
           await savePlayer(payload, mode === 'edit' ? id : null);
@@ -1891,11 +1966,20 @@
           closeModal(playerModal, playerForm);
         } catch (error) {
           showToast(error.message || 'Erreur lors de la sauvegarde.');
+        } finally {
+          isSavingPlayer = false;
+          savePlayerBtn.disabled = false;
+          savePlayerBtn.innerHTML = savePlayerBaseLabel;
         }
       });
 
+      const saveMatchBtn = document.getElementById('saveMatchBtn');
+      const saveMatchBaseLabel = saveMatchBtn.textContent;
+      let isSavingMatch = false;
+
       matchForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (isSavingMatch) return;
         const payload = {
           played_at: document.getElementById('matchPlayedAt').value,
           location: document.getElementById('matchLocation').value.trim(),
@@ -1907,12 +1991,10 @@
           showToast('La date et le lieu sont obligatoires.');
           return;
         }
-        if (payload.players.length !== 10) {
-          showRosterError('Le roster doit contenir exactement 10 joueurs.');
-          return;
-        }
-
         try {
+          isSavingMatch = true;
+          saveMatchBtn.disabled = true;
+          saveMatchBtn.innerHTML = `<span class="spinner"></span> Enregistrement...`;
           const mode = matchForm.dataset.mode;
           const id = matchForm.dataset.entityId || null;
           await saveMatch(payload, mode === 'edit' ? id : null);
@@ -1921,11 +2003,20 @@
           closeModal(matchModal, matchForm);
         } catch (error) {
           showToast(error.message || 'Erreur lors de la sauvegarde.');
+        } finally {
+          isSavingMatch = false;
+          saveMatchBtn.disabled = false;
+          saveMatchBtn.innerHTML = saveMatchBaseLabel;
         }
       });
 
+      const saveScoreBtn = document.getElementById('saveScoreBtn');
+      const saveScoreBaseLabel = saveScoreBtn.textContent;
+      let isSavingScore = false;
+
       scoreForm.addEventListener('submit', async (event) => {
         event.preventDefault();
+        if (isSavingScore) return;
         const id = scoreForm.dataset.entityId;
         const scoreA = Number(document.getElementById('teamAScore').value);
         const scoreB = Number(document.getElementById('teamBScore').value);
@@ -1934,12 +2025,19 @@
           return;
         }
         try {
+          isSavingScore = true;
+          saveScoreBtn.disabled = true;
+          saveScoreBtn.innerHTML = `<span class="spinner"></span> Enregistrement...`;
           await saveScore(id, scoreA, scoreB);
           await initData();
           showToast('Score enregistré.');
           closeModal(scoreModal, scoreForm);
         } catch (error) {
           showToast(error.message || 'Erreur lors de la sauvegarde.');
+        } finally {
+          isSavingScore = false;
+          saveScoreBtn.disabled = false;
+          saveScoreBtn.innerHTML = saveScoreBaseLabel;
         }
       });
     }
@@ -1947,6 +2045,24 @@
     function setupActions() {
       document.getElementById('addPlayerBtn').addEventListener('click', () => openPlayerModal('create'));
       document.getElementById('addMatchBtn').addEventListener('click', () => openMatchModal('create'));
+
+      document.getElementById('playerForm').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA') {
+          event.preventDefault();
+        }
+      });
+
+      document.getElementById('matchForm').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA') {
+          event.preventDefault();
+        }
+      });
+
+      document.getElementById('scoreForm').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA') {
+          event.preventDefault();
+        }
+      });
 
       document.getElementById('playersBody').addEventListener('click', (event) => {
         const row = event.target.closest('tr[data-player-id]');

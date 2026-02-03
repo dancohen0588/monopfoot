@@ -125,6 +125,12 @@ En cas d’erreur :
 }
 ```
 
+`players` est optionnel (0 à 10 joueurs distincts). `reservation_url` est optionnel et peut être vide.
+
+#### Idempotency (POST /api/players, POST /api/matches)
+
+Envoyer un header `X-Idempotency-Key` (UUID). Les requêtes identiques reçues avec la même clé dans un délai de 60s renvoient la première réponse.
+
 #### Payload (POST /api/matches/:id/compo)
 
 ```json

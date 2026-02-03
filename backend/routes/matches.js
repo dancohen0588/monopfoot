@@ -44,11 +44,14 @@ function normalizeMatchRow(row) {
 }
 
 function validatePlayersRoster(players) {
-  if (!Array.isArray(players)) {
-    return { error: 'La liste des joueurs est obligatoire.' };
+  if (players === undefined || players === null) {
+    return { players: [] };
   }
-  if (players.length !== 10) {
-    return { error: 'Le match doit contenir exactement 10 joueurs.' };
+  if (!Array.isArray(players)) {
+    return { error: 'La liste des joueurs doit être un tableau.' };
+  }
+  if (players.length > 10) {
+    return { error: 'Le match ne peut pas contenir plus de 10 joueurs.' };
   }
 
   const allIds = players.map(id => String(id));
@@ -57,8 +60,8 @@ function validatePlayersRoster(players) {
   }
 
   const uniqueIds = new Set(allIds);
-  if (uniqueIds.size !== 10) {
-    return { error: 'Les 10 joueurs doivent être distincts.' };
+  if (uniqueIds.size !== allIds.length) {
+    return { error: 'Les joueurs doivent être distincts.' };
   }
 
   return { players: allIds };
@@ -332,7 +335,7 @@ router.post('/', async (req, res) => {
   const playedAt = (req.body.played_at || '').trim();
   const location = (req.body.location || '').trim();
   const reservationUrl = (req.body.reservation_url || '').trim();
-  const players = req.body.players || [];
+  const players = req.body.players;
 
   if (!playedAt || !isValidDateTime(playedAt)) {
     return sendError(res, 400, 'La date/heure est invalide.');
@@ -385,7 +388,7 @@ router.put('/:id', async (req, res) => {
   const playedAt = (req.body.played_at || '').trim();
   const location = (req.body.location || '').trim();
   const reservationUrl = (req.body.reservation_url || '').trim();
-  const players = req.body.players || [];
+  const players = req.body.players;
 
   if (!playedAt || !isValidDateTime(playedAt)) {
     return sendError(res, 400, 'La date/heure est invalide.');
