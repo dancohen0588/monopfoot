@@ -515,6 +515,163 @@
       gap: 12px;
     }
 
+    .roster-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 10px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .roster-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .roster-chip button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-weight: 700;
+      color: var(--brand);
+    }
+
+    .roster-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .roster-select {
+      min-width: 260px;
+    }
+
+    .inline-error {
+      color: var(--danger);
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+
+    .compo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1.3fr;
+      gap: 16px;
+    }
+
+    .bench {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      max-height: 360px;
+      overflow: auto;
+    }
+
+    .bench-chip {
+      background: var(--white);
+      border: 1px solid #E5E7EB;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: grab;
+    }
+
+    .bench-chip.dragging {
+      opacity: 0.5;
+    }
+
+    .bench-chip.active {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(255,122,26,0.15);
+    }
+
+    .pitch {
+      background: linear-gradient(180deg, #F5F8FF 0%, #FFF5EC 100%);
+      border: 2px solid #E5E7EB;
+      border-radius: 18px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .pitch::before {
+      content: '';
+      position: absolute;
+      inset: 16px;
+      border: 2px dashed rgba(31,36,48,0.12);
+      border-radius: 14px;
+      pointer-events: none;
+    }
+
+    .pitch-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+
+    .team-slots {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .slot {
+      background: rgba(255,255,255,0.8);
+      border: 1.5px dashed #D1D5DB;
+      border-radius: 12px;
+      min-height: 52px;
+      display: grid;
+      place-items: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      padding: 6px;
+    }
+
+    .slot.filled {
+      border-style: solid;
+      border-color: var(--brand);
+      color: var(--text);
+      font-weight: 600;
+      background: #FFF7F0;
+    }
+
+    .slot.drag-over {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 2px rgba(255,122,26,0.2);
+    }
+
+    .compo-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: flex-end;
+    }
+
+    @media (max-width: 900px) {
+      .compo-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .roster-title {
       font-weight: 600;
       color: var(--text);
@@ -812,21 +969,56 @@
             <label for="matchLocation">Lieu *</label>
             <input id="matchLocation" name="location" type="text" required>
           </div>
+          <div class="form-group">
+            <label for="matchReservation">Réservation</label>
+            <input id="matchReservation" name="reservation_url" type="url" placeholder="Lien UrbanSoccer…">
+          </div>
 
-          <div class="roster-title">Équipe A (5 joueurs)</div>
-          <div class="roster-grid" id="teamASelects"></div>
-
-          <div class="roster-title">Équipe B (5 joueurs)</div>
-          <div class="roster-grid" id="teamBSelects"></div>
-
-          <div class="roster-count" id="rosterCount">0/10 joueurs sélectionnés</div>
-          <div class="helper-text">Les 10 joueurs doivent être distincts.</div>
+          <div class="roster-title">Joueurs sélectionnés (<span id="rosterCount">0</span>/10)</div>
+          <div class="roster-chips" id="rosterChips"></div>
+          <div class="roster-actions">
+            <button type="button" class="btn btn-secondary btn-sm" id="addRosterBtn">+ Ajouter un joueur</button>
+            <select id="rosterSelect" class="roster-select" style="display:none;"></select>
+            <button type="button" class="btn btn-secondary btn-sm" id="openCompoBtn" style="display:none;">Compo</button>
+          </div>
+          <div class="inline-error" id="rosterError" style="display:none;"></div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="cancelMatchModalBtn">Annuler</button>
           <button type="submit" class="btn btn-primary" id="saveMatchBtn" disabled>Enregistrer</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal Composition -->
+  <div class="modal-backdrop" id="compoModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="compoModalTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="compoModalTitle">Composition (drag & drop)</div>
+        <button class="icon-btn" id="closeCompoModalBtn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="compo-grid">
+          <div>
+            <div class="helper-text" style="margin-bottom:6px;">Banc</div>
+            <div class="bench" id="benchList"></div>
+          </div>
+          <div>
+            <div class="pitch">
+              <div class="pitch-title">Équipe A</div>
+              <div class="team-slots" id="teamASlots"></div>
+              <div class="pitch-title" style="margin-top:10px;">Équipe B</div>
+              <div class="team-slots" id="teamBSlots"></div>
+            </div>
+            <div class="compo-actions">
+              <button type="button" class="btn btn-secondary btn-sm" id="compoAutoBtn">Auto répartir</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="compoResetBtn">Réinitialiser</button>
+              <button type="button" class="btn btn-primary btn-sm" id="compoSaveBtn" disabled>Enregistrer la compo</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -931,6 +1123,10 @@
       return team.map(p => getDisplayName(p)).join(', ');
     }
 
+    function buildRosterLabel(roster) {
+      return (roster || []).map(p => getDisplayName(p)).join(', ');
+    }
+
     async function fetchJson(url, options = {}) {
       const response = await fetch(url, options);
       const payload = await response.json();
@@ -999,6 +1195,14 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_a_score: teamAScore, team_b_score: teamBScore })
+      });
+    }
+
+    async function saveCompo(matchId, payload) {
+      await fetchJson(`${API_MATCHES}/${matchId}/compo`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
     }
 
@@ -1100,24 +1304,31 @@
       grid.innerHTML = matches.map(match => {
         const teamALabel = buildTeamLabel(match.teamA || []);
         const teamBLabel = buildTeamLabel(match.teamB || []);
+        const rosterLabel = buildRosterLabel(match.roster || []);
+        const compoReady = match.compo_ready;
         const isPlayed = match.status === 'played';
         const winner = match.team_a_score === match.team_b_score ? 'Égalité'
           : (match.team_a_score > match.team_b_score ? 'Équipe A' : 'Équipe B');
+        const reservationLink = match.reservation_url
+          ? `<a href="${match.reservation_url}" target="_blank" rel="noopener">Réservation</a>`
+          : '';
 
         return `
           <div class="card" data-match-id="${match.id}">
             <div class="card-header">
               <div>
                 <div class="card-title">${formatDateTime(match.played_at)}</div>
-                <div class="card-subtitle">📍 ${match.location}</div>
+                <div class="card-subtitle">📍 ${match.location} ${reservationLink ? `• ${reservationLink}` : ''}</div>
               </div>
               <span class="status-badge ${isPlayed ? 'status-played' : 'status-scheduled'}">
                 ${isPlayed ? 'Joué' : 'Planifié'}
               </span>
             </div>
             <div class="match-teams">
-              <div class="match-team">Équipe A : ${teamALabel}</div>
-              <div class="match-team">Équipe B : ${teamBLabel}</div>
+              <div class="match-team">Équipe A : ${teamALabel || '—'}</div>
+              <div class="match-team">Équipe B : ${teamBLabel || '—'}</div>
+              ${!compoReady ? `<div class="helper-text">Roster: ${rosterLabel || '—'}</div>` : ''}
+              ${compoReady ? '<div class="helper-text">Compo OK</div>' : '<div class="helper-text">Compo à définir</div>'}
             </div>
             <div class="match-kpis">
               <div class="match-kpi">Score final<strong>${isPlayed ? `${match.team_a_score} - ${match.team_b_score}` : '—'}</strong></div>
@@ -1126,7 +1337,8 @@
             <div class="card-actions">
               <button class="btn btn-secondary btn-sm" data-action="edit-match" ${isPlayed ? 'disabled' : ''}>✏️ Modifier</button>
               <button class="btn btn-secondary btn-sm" data-action="delete-match">🗑 Supprimer</button>
-              <button class="btn btn-primary btn-sm" data-action="score-match">⚽ Saisir score</button>
+              <button class="btn btn-secondary btn-sm" data-action="edit-compo">🧩 Compo</button>
+              <button class="btn btn-primary btn-sm" data-action="score-match" ${compoReady ? '' : 'disabled'}>⚽ Saisir score</button>
               <button class="btn btn-muted btn-sm" data-action="copy-match">📱 Copier WhatsApp</button>
             </div>
           </div>
@@ -1152,6 +1364,15 @@
       tbody.innerHTML = scoresState.items.map(match => {
         const teamALabel = buildTeamLabel(match.teamA || []);
         const teamBLabel = buildTeamLabel(match.teamB || []);
+        if (!teamALabel || !teamBLabel) {
+          const rosterLabel = buildRosterLabel(match.roster || []);
+          return `
+            <tr>
+              <td>${formatDateShort(match.played_at)}</td>
+              <td colspan="5" class="text-center">Compo manquante — roster: ${rosterLabel || '—'}</td>
+            </tr>
+          `;
+        }
         const tie = match.team_a_score === match.team_b_score;
         const teamAWins = match.team_a_score > match.team_b_score;
         const winnerLabel = tie ? 'Égalité' : (teamAWins ? teamALabel : teamBLabel);
@@ -1247,89 +1468,237 @@
       `;
     }
 
-    function populateRosterSelects(match = null) {
-      const teamAContainer = document.getElementById('teamASelects');
-      const teamBContainer = document.getElementById('teamBSelects');
-      teamAContainer.innerHTML = '';
-      teamBContainer.innerHTML = '';
+    let rosterState = {
+      selectedIds: [],
+      matchId: null,
+      mode: 'create'
+    };
 
-      const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
-      const createSelect = (id) => {
-        const select = document.createElement('select');
-        select.className = 'match-player-select';
-        select.dataset.role = id;
+    let compoState = {
+      teamA: Array(5).fill(null),
+      teamB: Array(5).fill(null),
+      activePlayerId: null
+    };
+
+    function getPlayerById(playerId) {
+      return players.find(p => p.id === playerId) || null;
+    }
+
+    function getRosterFromMatch(match) {
+      if (Array.isArray(match?.roster) && match.roster.length) {
+        return match.roster.map(player => player.id);
+      }
+      const combined = [...(match?.teamA || []), ...(match?.teamB || [])];
+      return combined.map(player => player.id);
+    }
+
+    function setRosterSelected(ids) {
+      rosterState.selectedIds = Array.isArray(ids) ? [...ids] : [];
+      updateRosterUI();
+    }
+
+    function showRosterError(message = '') {
+      const rosterError = document.getElementById('rosterError');
+      if (!message) {
+        rosterError.style.display = 'none';
+        rosterError.textContent = '';
+        return;
+      }
+      rosterError.textContent = message;
+      rosterError.style.display = 'block';
+    }
+
+    function updateRosterUI() {
+      const rosterCount = document.getElementById('rosterCount');
+      const rosterChips = document.getElementById('rosterChips');
+      const rosterSelect = document.getElementById('rosterSelect');
+      const saveBtn = document.getElementById('saveMatchBtn');
+      const openCompoBtn = document.getElementById('openCompoBtn');
+
+      rosterCount.textContent = String(rosterState.selectedIds.length);
+
+      const rosterSet = new Set(rosterState.selectedIds);
+      compoState.teamA = compoState.teamA.map(id => (id && rosterSet.has(id) ? id : null));
+      compoState.teamB = compoState.teamB.map(id => (id && rosterSet.has(id) ? id : null));
+
+      if (!rosterState.selectedIds.length) {
+        rosterChips.innerHTML = '<span class="helper-text">Aucun joueur sélectionné.</span>';
+      } else {
+        rosterChips.innerHTML = rosterState.selectedIds.map(playerId => {
+          const player = getPlayerById(playerId);
+          const name = player ? player.name : 'Joueur';
+          return `
+            <span class="roster-chip" data-player-id="${playerId}">
+              ${name}
+              <button type="button" data-action="remove-roster">✕</button>
+            </span>
+          `;
+        }).join('');
+      }
+
+      const availablePlayers = players.filter(player => !rosterState.selectedIds.includes(player.id));
+      rosterSelect.innerHTML = '';
+      if (availablePlayers.length) {
         const placeholder = document.createElement('option');
         placeholder.value = '';
         placeholder.textContent = 'Sélectionner un joueur';
         placeholder.disabled = true;
         placeholder.selected = true;
-        select.appendChild(placeholder);
-        sortedPlayers.forEach(player => {
-          const option = document.createElement('option');
-          option.value = player.id;
-          option.textContent = player.name;
-          select.appendChild(option);
-        });
-        return select;
-      };
-
-      for (let i = 1; i <= 5; i += 1) {
-        const group = document.createElement('div');
-        group.className = 'form-group';
-        group.innerHTML = `<label>Équipe A — Joueur ${i} *</label>`;
-        const select = createSelect(`A${i}`);
-        group.appendChild(select);
-        teamAContainer.appendChild(group);
+        rosterSelect.appendChild(placeholder);
+        availablePlayers
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .forEach(player => {
+            const option = document.createElement('option');
+            option.value = player.id;
+            option.textContent = player.name;
+            rosterSelect.appendChild(option);
+          });
+      } else {
+        rosterSelect.style.display = 'none';
       }
 
-      for (let i = 1; i <= 5; i += 1) {
-        const group = document.createElement('div');
-        group.className = 'form-group';
-        group.innerHTML = `<label>Équipe B — Joueur ${i} *</label>`;
-        const select = createSelect(`B${i}`);
-        group.appendChild(select);
-        teamBContainer.appendChild(group);
-      }
-
-      if (match) {
-        (match.teamA || []).forEach((player, idx) => {
-          const select = teamAContainer.querySelectorAll('select')[idx];
-          if (select) select.value = player.id;
-        });
-        (match.teamB || []).forEach((player, idx) => {
-          const select = teamBContainer.querySelectorAll('select')[idx];
-          if (select) select.value = player.id;
-        });
-      }
-
-      syncRosterSelects();
-      teamAContainer.querySelectorAll('select').forEach(select => select.addEventListener('change', syncRosterSelects));
-      teamBContainer.querySelectorAll('select').forEach(select => select.addEventListener('change', syncRosterSelects));
+      openCompoBtn.style.display = rosterState.selectedIds.length === 10 ? 'inline-flex' : 'none';
+      saveBtn.disabled = rosterState.selectedIds.length !== 10;
     }
 
-    function syncRosterSelects() {
-      const selects = Array.from(document.querySelectorAll('.match-player-select'));
-      const selected = selects.map(s => s.value).filter(Boolean);
-      const unique = new Set(selected);
-      const rosterCount = document.getElementById('rosterCount');
-      rosterCount.textContent = `${unique.size}/10 joueurs sélectionnés`;
+    function resetCompoState() {
+      compoState = {
+        teamA: Array(5).fill(null),
+        teamB: Array(5).fill(null),
+        activePlayerId: null
+      };
+    }
 
-      selects.forEach(select => {
-        Array.from(select.options).forEach(option => {
-          if (!option.value) return;
-          option.disabled = selected.includes(option.value) && option.value !== select.value;
+    function fillCompoFromMatch(match) {
+      resetCompoState();
+      const fillTeam = (teamKey, playersList) => {
+        const slots = compoState[teamKey];
+        (playersList || []).forEach(player => {
+          const position = Number(player.position);
+          if (Number.isInteger(position) && position >= 1 && position <= 5) {
+            slots[position - 1] = player.id;
+          }
+        });
+      };
+      fillTeam('teamA', match?.teamA || []);
+      fillTeam('teamB', match?.teamB || []);
+    }
+
+    function getCompoAssignedIds() {
+      return [...compoState.teamA, ...compoState.teamB].filter(Boolean);
+    }
+
+    function isCompoComplete() {
+      const allIds = getCompoAssignedIds();
+      return allIds.length === 10 && new Set(allIds).size === 10;
+    }
+
+    function assignPlayerToSlot(teamKey, index, playerId) {
+      if (!playerId) return;
+      ['teamA', 'teamB'].forEach(team => {
+        compoState[team] = compoState[team].map(id => (id === playerId ? null : id));
+      });
+      compoState[teamKey][index] = playerId;
+      compoState.activePlayerId = null;
+      renderCompo();
+    }
+
+    function clearSlot(teamKey, index) {
+      compoState[teamKey][index] = null;
+      renderCompo();
+    }
+
+    function renderCompo() {
+      const benchList = document.getElementById('benchList');
+      const teamASlots = document.getElementById('teamASlots');
+      const teamBSlots = document.getElementById('teamBSlots');
+      const saveBtn = document.getElementById('compoSaveBtn');
+
+      const assignedIds = new Set(getCompoAssignedIds());
+      const benchPlayers = rosterState.selectedIds
+        .filter(id => !assignedIds.has(id))
+        .map(id => getPlayerById(id))
+        .filter(Boolean);
+
+      benchList.innerHTML = benchPlayers.length
+        ? benchPlayers.map(player => {
+            const isActive = compoState.activePlayerId === player.id;
+            return `
+              <div class="bench-chip ${isActive ? 'active' : ''}" draggable="true" data-player-id="${player.id}">
+                ${player.name}
+              </div>
+            `;
+          }).join('')
+        : '<div class="helper-text">Tous les joueurs sont placés.</div>';
+
+      const renderSlot = (teamKey, index) => {
+        const playerId = compoState[teamKey][index];
+        const player = playerId ? getPlayerById(playerId) : null;
+        const label = player ? player.name : `Slot ${index + 1}`;
+        const filledClass = player ? 'filled' : '';
+        return `
+          <div class="slot ${filledClass}" data-team="${teamKey}" data-index="${index}">
+            ${label}
+          </div>
+        `;
+      };
+
+      teamASlots.innerHTML = Array.from({ length: 5 }, (_, idx) => renderSlot('teamA', idx)).join('');
+      teamBSlots.innerHTML = Array.from({ length: 5 }, (_, idx) => renderSlot('teamB', idx)).join('');
+
+      saveBtn.disabled = !isCompoComplete();
+
+      benchList.querySelectorAll('.bench-chip').forEach(chip => {
+        chip.addEventListener('dragstart', (event) => {
+          chip.classList.add('dragging');
+          event.dataTransfer.setData('text/plain', chip.dataset.playerId);
+        });
+        chip.addEventListener('dragend', () => {
+          chip.classList.remove('dragging');
+        });
+        chip.addEventListener('click', () => {
+          compoState.activePlayerId = chip.dataset.playerId;
+          renderCompo();
         });
       });
 
-      const saveBtn = document.getElementById('saveMatchBtn');
-      saveBtn.disabled = unique.size !== 10;
+      document.querySelectorAll('#teamASlots .slot, #teamBSlots .slot').forEach(slot => {
+        slot.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          slot.classList.add('drag-over');
+        });
+        slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
+        slot.addEventListener('drop', (event) => {
+          event.preventDefault();
+          slot.classList.remove('drag-over');
+          const playerId = event.dataTransfer.getData('text/plain');
+          const teamKey = slot.dataset.team;
+          const index = Number(slot.dataset.index);
+          assignPlayerToSlot(teamKey, index, playerId);
+        });
+        slot.addEventListener('click', () => {
+          const teamKey = slot.dataset.team;
+          const index = Number(slot.dataset.index);
+          if (compoState.activePlayerId) {
+            assignPlayerToSlot(teamKey, index, compoState.activePlayerId);
+            return;
+          }
+          if (compoState[teamKey][index]) {
+            clearSlot(teamKey, index);
+          }
+        });
+      });
     }
 
-    function getRosterPayload() {
-      const selects = Array.from(document.querySelectorAll('.match-player-select'));
-      const teamA = selects.filter(s => s.dataset.role?.startsWith('A')).map(s => s.value);
-      const teamB = selects.filter(s => s.dataset.role?.startsWith('B')).map(s => s.value);
-      return { teamA, teamB };
+    function buildCompoPayload() {
+      const buildTeamPayload = (teamKey) => compoState[teamKey].map((playerId, index) => ({
+        player_id: playerId,
+        position: index + 1
+      }));
+      return {
+        teamA: buildTeamPayload('teamA'),
+        teamB: buildTeamPayload('teamB')
+      };
     }
 
     function setupModals() {
@@ -1342,6 +1711,8 @@
       const scoreModal = document.getElementById('scoreModal');
       const scoreForm = document.getElementById('scoreForm');
 
+      const compoModal = document.getElementById('compoModal');
+
       function closeModal(modal, form) {
         modal.classList.remove('show');
         if (form) {
@@ -1349,6 +1720,11 @@
           form.dataset.mode = '';
           form.dataset.entityId = '';
         }
+      }
+
+      function closeCompoModal() {
+        compoModal.classList.remove('show');
+        compoState.activePlayerId = null;
       }
 
       document.getElementById('closePlayerModalBtn').addEventListener('click', () => closeModal(playerModal, playerForm));
@@ -1362,6 +1738,81 @@
       document.getElementById('closeScoreModalBtn').addEventListener('click', () => closeModal(scoreModal, scoreForm));
       document.getElementById('cancelScoreModalBtn').addEventListener('click', () => closeModal(scoreModal, scoreForm));
       scoreModal.addEventListener('click', (event) => { if (event.target === scoreModal) closeModal(scoreModal, scoreForm); });
+
+      document.getElementById('closeCompoModalBtn').addEventListener('click', closeCompoModal);
+      compoModal.addEventListener('click', (event) => { if (event.target === compoModal) closeCompoModal(); });
+
+      document.getElementById('addRosterBtn').addEventListener('click', () => {
+        const rosterSelect = document.getElementById('rosterSelect');
+        rosterSelect.style.display = 'inline-flex';
+        rosterSelect.focus();
+      });
+
+      document.getElementById('rosterSelect').addEventListener('change', (event) => {
+        const playerId = event.target.value;
+        if (playerId && !rosterState.selectedIds.includes(playerId)) {
+          rosterState.selectedIds.push(playerId);
+          updateRosterUI();
+          showRosterError('');
+        }
+        event.target.style.display = 'none';
+      });
+
+      document.getElementById('rosterChips').addEventListener('click', (event) => {
+        const chip = event.target.closest('[data-player-id]');
+        if (!chip || !event.target.matches('[data-action="remove-roster"]')) return;
+        const playerId = chip.dataset.playerId;
+        rosterState.selectedIds = rosterState.selectedIds.filter(id => id !== playerId);
+        updateRosterUI();
+      });
+
+      document.getElementById('openCompoBtn').addEventListener('click', () => {
+        if (rosterState.selectedIds.length !== 10) {
+          showRosterError('Le roster doit contenir exactement 10 joueurs.');
+          return;
+        }
+        if (!rosterState.matchId) {
+          showToast('Enregistre le match avant la composition.');
+          return;
+        }
+        renderCompo();
+        compoModal.classList.add('show');
+      });
+
+      document.getElementById('compoAutoBtn').addEventListener('click', () => {
+        const sorted = [...rosterState.selectedIds]
+          .map(id => getPlayerById(id))
+          .filter(Boolean)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        resetCompoState();
+        sorted.forEach((player, idx) => {
+          const targetTeam = idx < 5 ? 'teamA' : 'teamB';
+          const pos = idx < 5 ? idx : idx - 5;
+          compoState[targetTeam][pos] = player.id;
+        });
+        renderCompo();
+      });
+
+      document.getElementById('compoResetBtn').addEventListener('click', () => {
+        resetCompoState();
+        renderCompo();
+      });
+
+      document.getElementById('compoSaveBtn').addEventListener('click', async () => {
+        if (!isCompoComplete()) return;
+        if (!rosterState.matchId) {
+          showToast('Enregistre le match avant la composition.');
+          return;
+        }
+        try {
+          await saveCompo(rosterState.matchId, buildCompoPayload());
+          await initData();
+          showToast('Composition enregistrée.');
+          closeCompoModal();
+        } catch (error) {
+          showToast(error.message || 'Erreur lors de la sauvegarde.');
+        }
+      });
 
       window.openPlayerModal = (mode, player = null) => {
         playerForm.dataset.mode = mode;
@@ -1382,18 +1833,25 @@
       window.openMatchModal = (mode, match = null) => {
         matchForm.dataset.mode = mode;
         matchForm.dataset.entityId = match ? match.id : '';
+        rosterState.mode = mode;
+        rosterState.matchId = match ? match.id : null;
         document.getElementById('matchModalTitle').textContent = mode === 'edit' ? 'Modifier le match' : 'Ajouter un match';
         document.getElementById('saveMatchBtn').textContent = mode === 'edit' ? 'Enregistrer' : 'Ajouter';
-
-        populateRosterSelects(match);
 
         if (match) {
           document.getElementById('matchPlayedAt').value = toLocalInputValue(match.played_at);
           document.getElementById('matchLocation').value = match.location || '';
+          document.getElementById('matchReservation').value = match.reservation_url || '';
+          setRosterSelected(getRosterFromMatch(match));
+          fillCompoFromMatch(match);
         } else {
           document.getElementById('matchPlayedAt').value = toLocalInputValue();
+          document.getElementById('matchReservation').value = '';
+          setRosterSelected([]);
+          resetCompoState();
         }
 
+        showRosterError('');
         matchModal.classList.add('show');
       };
 
@@ -1441,16 +1899,16 @@
         const payload = {
           played_at: document.getElementById('matchPlayedAt').value,
           location: document.getElementById('matchLocation').value.trim(),
-          ...getRosterPayload()
+          reservation_url: document.getElementById('matchReservation').value.trim(),
+          players: [...rosterState.selectedIds]
         };
 
-        const allIds = [...payload.teamA, ...payload.teamB].filter(Boolean);
         if (!payload.played_at || !payload.location) {
           showToast('La date et le lieu sont obligatoires.');
           return;
         }
-        if (new Set(allIds).size !== 10) {
-          showToast('Les 10 joueurs doivent être distincts.');
+        if (payload.players.length !== 10) {
+          showRosterError('Le roster doit contenir exactement 10 joueurs.');
           return;
         }
 
@@ -1536,8 +1994,17 @@
           openScoreModal(match);
         }
 
+        if (event.target.closest('[data-action="edit-compo"]')) {
+          rosterState.matchId = match.id;
+          setRosterSelected(getRosterFromMatch(match));
+          fillCompoFromMatch(match);
+          renderCompo();
+          document.getElementById('compoModal').classList.add('show');
+        }
+
         if (event.target.closest('[data-action="copy-match"]')) {
-          const message = `⚽ Monop’Foot\n\n📅 ${formatDateTime(match.played_at)}\n📍 ${match.location}\n👥 Équipe A: ${buildTeamLabel(match.teamA || [])}\n👥 Équipe B: ${buildTeamLabel(match.teamB || [])}\n✅ Statut: ${match.status === 'played' ? 'Joué' : 'Planifié'}`;
+          const reservationLine = match.reservation_url ? `\n🔗 Réservation: ${match.reservation_url}` : '';
+          const message = `⚽ Monop’Foot\n\n📅 ${formatDateTime(match.played_at)}\n📍 ${match.location}${reservationLine}\n👥 Équipe A: ${buildTeamLabel(match.teamA || [])}\n👥 Équipe B: ${buildTeamLabel(match.teamB || [])}\n✅ Statut: ${match.status === 'played' ? 'Joué' : 'Planifié'}`;
           navigator.clipboard.writeText(message)
             .then(() => showToast('Message copié !'))
             .catch(() => showToast('Erreur lors de la copie.'));
@@ -1623,5 +2090,3 @@
   </script>
 </body>
 </html>
-
-

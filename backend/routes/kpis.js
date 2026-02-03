@@ -19,31 +19,55 @@ router.get('/', async (req, res) => {
 
   const playedMatchesSql = `
     SELECT COUNT(*) AS total
-    FROM matches
-    WHERE status = 'played'
+    FROM matches m
+    WHERE m.status = 'played'
+      AND EXISTS (
+        SELECT 1
+        FROM match_players mp
+        WHERE mp.match_id = m.id
+        GROUP BY mp.match_id
+        HAVING COUNT(*) = 10
+           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      )
   `;
 
   const matchesByMonthSql = `
     SELECT
-      TO_CHAR(played_at, 'YYYY-MM') AS month,
+      TO_CHAR(m.played_at, 'YYYY-MM') AS month,
       COUNT(*) AS total_matches
-    FROM matches
-    WHERE status = 'played'
-    GROUP BY TO_CHAR(played_at, 'YYYY-MM')
+    FROM matches m
+    WHERE m.status = 'played'
+      AND EXISTS (
+        SELECT 1
+        FROM match_players mp
+        WHERE mp.match_id = m.id
+        GROUP BY mp.match_id
+        HAVING COUNT(*) = 10
+           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      )
+    GROUP BY TO_CHAR(m.played_at, 'YYYY-MM')
     ORDER BY month ASC
   `;
 
   const topWinnersSql = `
-    WITH winners AS (
+    WITH complete_matches AS (
+      SELECT match_id
+      FROM match_players
+      GROUP BY match_id
+      HAVING COUNT(*) = 10
+         AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+    ),
+    winners AS (
       SELECT
-        id AS match_id,
+        m.id AS match_id,
         CASE
-          WHEN team_a_score > team_b_score THEN 'A'
-          WHEN team_b_score > team_a_score THEN 'B'
+          WHEN m.team_a_score > m.team_b_score THEN 'A'
+          WHEN m.team_b_score > m.team_a_score THEN 'B'
           ELSE 'D'
         END AS winner
-      FROM matches
-      WHERE status = 'played'
+      FROM matches m
+      JOIN complete_matches cm ON cm.match_id = m.id
+      WHERE m.status = 'played'
     ),
     winner_players AS (
       SELECT mp.player_id
@@ -65,7 +89,14 @@ router.get('/', async (req, res) => {
   `;
 
   const topScorerSql = `
-    WITH match_scores AS (
+    WITH complete_matches AS (
+      SELECT match_id
+      FROM match_players
+      GROUP BY match_id
+      HAVING COUNT(*) = 10
+         AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+    ),
+    match_scores AS (
       SELECT
         m.id,
         mp.player_id,
@@ -73,6 +104,7 @@ router.get('/', async (req, res) => {
         m.team_a_score,
         m.team_b_score
       FROM matches m
+      JOIN complete_matches cm ON cm.match_id = m.id
       JOIN match_players mp ON mp.match_id = m.id
       WHERE m.status = 'played'
     ),

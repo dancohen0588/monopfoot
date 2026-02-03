@@ -21,29 +21,37 @@ function isValidDateTime(value) {
 }
 
 function normalizeMatchRow(row) {
+  const teamA = row.teamA || [];
+  const teamB = row.teamB || [];
+  const roster = row.roster || [];
+  const compoReady = roster.length === 10 && teamA.length === 5 && teamB.length === 5;
+
   return {
     id: row.id,
     played_at: row.played_at,
     location: row.location,
+    reservation_url: row.reservation_url || null,
     status: row.status,
     team_a_score: row.team_a_score,
     team_b_score: row.team_b_score,
     created_at: row.created_at,
     updated_at: row.updated_at,
-    teamA: row.teamA || [],
-    teamB: row.teamB || []
+    roster,
+    teamA,
+    teamB,
+    compo_ready: compoReady
   };
 }
 
-function validateRoster(teamA, teamB) {
-  if (!Array.isArray(teamA) || !Array.isArray(teamB)) {
-    return { error: 'Les équipes A et B doivent être des listes de joueurs.' };
+function validatePlayersRoster(players) {
+  if (!Array.isArray(players)) {
+    return { error: 'La liste des joueurs est obligatoire.' };
   }
-  if (teamA.length !== 5 || teamB.length !== 5) {
-    return { error: 'Chaque équipe doit contenir exactement 5 joueurs.' };
+  if (players.length !== 10) {
+    return { error: 'Le match doit contenir exactement 10 joueurs.' };
   }
 
-  const allIds = [...teamA, ...teamB].map(id => String(id));
+  const allIds = players.map(id => String(id));
   if (allIds.some(id => !id)) {
     return { error: 'Chaque joueur doit être sélectionné.' };
   }
@@ -53,7 +61,52 @@ function validateRoster(teamA, teamB) {
     return { error: 'Les 10 joueurs doivent être distincts.' };
   }
 
-  return { teamA: teamA.map(id => String(id)), teamB: teamB.map(id => String(id)) };
+  return { players: allIds };
+}
+
+function validateCompoPayload(teamA, teamB) {
+  if (!Array.isArray(teamA) || !Array.isArray(teamB)) {
+    return { error: 'Les équipes A et B doivent être des listes de joueurs.' };
+  }
+  if (teamA.length !== 5 || teamB.length !== 5) {
+    return { error: 'Chaque équipe doit contenir exactement 5 joueurs.' };
+  }
+
+  const normalizeEntry = (entry) => ({
+    player_id: entry?.player_id ? String(entry.player_id) : '',
+    position: Number(entry?.position)
+  });
+
+  const teamAEntries = teamA.map(normalizeEntry);
+  const teamBEntries = teamB.map(normalizeEntry);
+  const allEntries = [...teamAEntries, ...teamBEntries];
+
+  if (allEntries.some(entry => !entry.player_id)) {
+    return { error: 'Chaque joueur doit être sélectionné.' };
+  }
+
+  const allIds = allEntries.map(entry => entry.player_id);
+  if (new Set(allIds).size !== 10) {
+    return { error: 'Les 10 joueurs doivent être distincts.' };
+  }
+
+  const validatePositions = (entries, teamLabel) => {
+    const positions = entries.map(entry => entry.position);
+    if (positions.some(pos => !Number.isInteger(pos) || pos < 1 || pos > 5)) {
+      return `Les positions de l'équipe ${teamLabel} doivent être entre 1 et 5.`;
+    }
+    if (new Set(positions).size !== 5) {
+      return `Les positions de l'équipe ${teamLabel} doivent être uniques.`;
+    }
+    return null;
+  };
+
+  const teamAError = validatePositions(teamAEntries, 'A');
+  if (teamAError) return { error: teamAError };
+  const teamBError = validatePositions(teamBEntries, 'B');
+  if (teamBError) return { error: teamBError };
+
+  return { teamA: teamAEntries, teamB: teamBEntries };
 }
 
 async function getMatchWithTeams(matchId) {
@@ -66,10 +119,11 @@ async function getMatchWithTeams(matchId) {
      FROM match_players mp
      JOIN players p ON p.id = mp.player_id
      WHERE mp.match_id = $1
-     ORDER BY mp.team ASC, mp.position ASC`,
+     ORDER BY mp.team ASC NULLS LAST, mp.position ASC NULLS LAST`,
     [matchId]
   );
 
+  const roster = [];
   const teamA = [];
   const teamB = [];
   playersResult.rows.forEach(row => {
@@ -79,11 +133,12 @@ async function getMatchWithTeams(matchId) {
       last_name: row.last_name,
       position: row.position
     };
+    roster.push(payload);
     if (row.team === 'A') teamA.push(payload);
     if (row.team === 'B') teamB.push(payload);
   });
 
-  return normalizeMatchRow({ ...matchRow, teamA, teamB });
+  return normalizeMatchRow({ ...matchRow, roster, teamA, teamB });
 }
 
 router.get('/', async (req, res) => {
@@ -104,13 +159,13 @@ router.get('/', async (req, res) => {
        FROM match_players mp
        JOIN players p ON p.id = mp.player_id
        WHERE mp.match_id = ANY($1)
-       ORDER BY mp.match_id ASC, mp.team ASC, mp.position ASC`,
+       ORDER BY mp.match_id ASC, mp.team ASC NULLS LAST, mp.position ASC NULLS LAST`,
       [matchIds]
     );
 
     const map = new Map();
     matchesResult.rows.forEach(row => {
-      map.set(row.id, { ...row, teamA: [], teamB: [] });
+      map.set(row.id, { ...row, roster: [], teamA: [], teamB: [] });
     });
 
     playersResult.rows.forEach(row => {
@@ -122,6 +177,7 @@ router.get('/', async (req, res) => {
         last_name: row.last_name,
         position: row.position
       };
+      entry.roster.push(payload);
       if (row.team === 'A') entry.teamA.push(payload);
       if (row.team === 'B') entry.teamB.push(payload);
     });
@@ -162,6 +218,14 @@ router.get('/played', async (req, res) => {
     SELECT COUNT(*) AS total
     FROM matches m
     WHERE m.status = 'played'
+      AND EXISTS (
+        SELECT 1
+        FROM match_players mp
+        WHERE mp.match_id = m.id
+        GROUP BY mp.match_id
+        HAVING COUNT(*) = 10
+           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      )
     ${filterClause}
   `;
 
@@ -169,6 +233,14 @@ router.get('/played', async (req, res) => {
     SELECT *
     FROM matches m
     WHERE m.status = 'played'
+      AND EXISTS (
+        SELECT 1
+        FROM match_players mp
+        WHERE mp.match_id = m.id
+        GROUP BY mp.match_id
+        HAVING COUNT(*) = 10
+           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      )
     ${filterClause}
     ORDER BY m.played_at DESC, m.created_at DESC
     LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
@@ -195,13 +267,13 @@ router.get('/played', async (req, res) => {
        FROM match_players mp
        JOIN players p ON p.id = mp.player_id
        WHERE mp.match_id = ANY($1)
-       ORDER BY mp.match_id ASC, mp.team ASC, mp.position ASC`,
+       ORDER BY mp.match_id ASC, mp.team ASC NULLS LAST, mp.position ASC NULLS LAST`,
       [matchIds]
     );
 
     const map = new Map();
     rows.forEach(row => {
-      map.set(row.id, { ...row, teamA: [], teamB: [] });
+      map.set(row.id, { ...row, roster: [], teamA: [], teamB: [] });
     });
 
     playersResult.rows.forEach(row => {
@@ -213,6 +285,7 @@ router.get('/played', async (req, res) => {
         last_name: row.last_name,
         position: row.position
       };
+      entry.roster.push(payload);
       if (row.team === 'A') entry.teamA.push(payload);
       if (row.team === 'B') entry.teamB.push(payload);
     });
@@ -258,8 +331,8 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   const playedAt = (req.body.played_at || '').trim();
   const location = (req.body.location || '').trim();
-  const teamA = req.body.teamA || [];
-  const teamB = req.body.teamB || [];
+  const reservationUrl = (req.body.reservation_url || '').trim();
+  const players = req.body.players || [];
 
   if (!playedAt || !isValidDateTime(playedAt)) {
     return sendError(res, 400, 'La date/heure est invalide.');
@@ -269,18 +342,19 @@ router.post('/', async (req, res) => {
     return sendError(res, 400, 'Le lieu est obligatoire.');
   }
 
-  const rosterValidation = validateRoster(teamA, teamB);
+  const rosterValidation = validatePlayersRoster(players);
   if (rosterValidation.error) {
     return sendError(res, 400, rosterValidation.error);
   }
 
   try {
+    await db.query('BEGIN');
     const insertMatchSql = `
-      INSERT INTO matches (played_at, location)
-      VALUES ($1, $2)
+      INSERT INTO matches (played_at, location, reservation_url)
+      VALUES ($1, $2, $3)
       RETURNING *
     `;
-    const matchResult = await db.query(insertMatchSql, [playedAt, location]);
+    const matchResult = await db.query(insertMatchSql, [playedAt, location, reservationUrl || null]);
     const match = matchResult.rows?.[0];
 
     const insertPlayerSql = `
@@ -288,16 +362,16 @@ router.post('/', async (req, res) => {
       VALUES ($1, $2, $3, $4)
     `;
 
-    for (let i = 0; i < rosterValidation.teamA.length; i += 1) {
-      await db.query(insertPlayerSql, [match.id, rosterValidation.teamA[i], 'A', i + 1]);
+    for (let i = 0; i < rosterValidation.players.length; i += 1) {
+      await db.query(insertPlayerSql, [match.id, rosterValidation.players[i], null, null]);
     }
-    for (let i = 0; i < rosterValidation.teamB.length; i += 1) {
-      await db.query(insertPlayerSql, [match.id, rosterValidation.teamB[i], 'B', i + 1]);
-    }
+
+    await db.query('COMMIT');
 
     const fullMatch = await getMatchWithTeams(match.id);
     return sendSuccess(res, fullMatch);
   } catch (error) {
+    await db.query('ROLLBACK');
     return sendError(res, 500, 'Erreur lors de la création du match.', error.message);
   }
 });
@@ -310,8 +384,8 @@ router.put('/:id', async (req, res) => {
 
   const playedAt = (req.body.played_at || '').trim();
   const location = (req.body.location || '').trim();
-  const teamA = req.body.teamA || [];
-  const teamB = req.body.teamB || [];
+  const reservationUrl = (req.body.reservation_url || '').trim();
+  const players = req.body.players || [];
 
   if (!playedAt || !isValidDateTime(playedAt)) {
     return sendError(res, 400, 'La date/heure est invalide.');
@@ -321,7 +395,7 @@ router.put('/:id', async (req, res) => {
     return sendError(res, 400, 'Le lieu est obligatoire.');
   }
 
-  const rosterValidation = validateRoster(teamA, teamB);
+  const rosterValidation = validatePlayersRoster(players);
   if (rosterValidation.error) {
     return sendError(res, 400, rosterValidation.error);
   }
@@ -336,13 +410,14 @@ router.put('/:id', async (req, res) => {
       return sendError(res, 400, 'Le roster ne peut plus être modifié une fois le score saisi.');
     }
 
+    await db.query('BEGIN');
     const updateSql = `
       UPDATE matches
-      SET played_at = $1, location = $2, updated_at = CURRENT_TIMESTAMP
-      WHERE id = $3
+      SET played_at = $1, location = $2, reservation_url = $3, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4
       RETURNING *
     `;
-    await db.query(updateSql, [playedAt, location, id]);
+    await db.query(updateSql, [playedAt, location, reservationUrl || null, id]);
 
     await db.query('DELETE FROM match_players WHERE match_id = $1', [id]);
 
@@ -351,16 +426,16 @@ router.put('/:id', async (req, res) => {
       VALUES ($1, $2, $3, $4)
     `;
 
-    for (let i = 0; i < rosterValidation.teamA.length; i += 1) {
-      await db.query(insertPlayerSql, [id, rosterValidation.teamA[i], 'A', i + 1]);
+    for (let i = 0; i < rosterValidation.players.length; i += 1) {
+      await db.query(insertPlayerSql, [id, rosterValidation.players[i], null, null]);
     }
-    for (let i = 0; i < rosterValidation.teamB.length; i += 1) {
-      await db.query(insertPlayerSql, [id, rosterValidation.teamB[i], 'B', i + 1]);
-    }
+
+    await db.query('COMMIT');
 
     const fullMatch = await getMatchWithTeams(id);
     return sendSuccess(res, fullMatch);
   } catch (error) {
+    await db.query('ROLLBACK');
     return sendError(res, 500, 'Erreur lors de la mise à jour du match.', error.message);
   }
 });
@@ -372,6 +447,7 @@ router.delete('/:id', async (req, res) => {
   }
 
   try {
+    await db.query('DELETE FROM match_players WHERE match_id = $1', [id]);
     const result = await db.query('DELETE FROM matches WHERE id = $1 RETURNING id', [id]);
     const row = result.rows?.[0];
     if (!row) {
@@ -401,6 +477,19 @@ router.post('/:id/score', async (req, res) => {
     const exists = existsResult.rows?.[0];
     if (!exists) {
       return sendError(res, 404, 'Match introuvable.');
+    }
+
+    const compoResult = await db.query(
+      `SELECT COUNT(*) AS total,
+              COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) AS complete
+       FROM match_players
+       WHERE match_id = $1`,
+      [id]
+    );
+    const totalPlayers = Number(compoResult.rows?.[0]?.total || 0);
+    const completePlayers = Number(compoResult.rows?.[0]?.complete || 0);
+    if (totalPlayers !== 10 || completePlayers !== 10) {
+      return sendError(res, 400, 'La composition doit être complète avant de saisir un score.');
     }
 
     const updateSql = `
@@ -441,6 +530,67 @@ router.delete('/:id/score', async (req, res) => {
     return sendSuccess(res, fullMatch);
   } catch (error) {
     return sendError(res, 500, 'Erreur lors de la réinitialisation du score.', error.message);
+  }
+});
+
+router.post('/:id/compo', async (req, res) => {
+  const id = req.params.id;
+  if (!id) {
+    return sendError(res, 400, "L'id est obligatoire.");
+  }
+
+  const validation = validateCompoPayload(req.body.teamA || [], req.body.teamB || []);
+  if (validation.error) {
+    return sendError(res, 400, validation.error);
+  }
+
+  try {
+    const rosterResult = await db.query(
+      'SELECT player_id FROM match_players WHERE match_id = $1',
+      [id]
+    );
+    const rosterIds = (rosterResult.rows || []).map(row => String(row.player_id));
+    if (rosterIds.length !== 10) {
+      return sendError(res, 400, 'Le roster du match est incomplet.');
+    }
+
+    const rosterSet = new Set(rosterIds);
+    const allIncoming = [...validation.teamA, ...validation.teamB].map(entry => entry.player_id);
+    if (new Set(allIncoming).size !== 10) {
+      return sendError(res, 400, 'Les 10 joueurs doivent être distincts.');
+    }
+    for (const playerId of allIncoming) {
+      if (!rosterSet.has(playerId)) {
+        return sendError(res, 400, 'La composition doit correspondre au roster du match.');
+      }
+    }
+
+    await db.query('BEGIN');
+    await db.query(
+      'UPDATE match_players SET team = NULL, position = NULL WHERE match_id = $1',
+      [id]
+    );
+
+    const updateSql = `
+      UPDATE match_players
+      SET team = $1, position = $2
+      WHERE match_id = $3 AND player_id = $4
+    `;
+
+    for (const entry of validation.teamA) {
+      await db.query(updateSql, ['A', entry.position, id, entry.player_id]);
+    }
+    for (const entry of validation.teamB) {
+      await db.query(updateSql, ['B', entry.position, id, entry.player_id]);
+    }
+
+    await db.query('COMMIT');
+
+    const fullMatch = await getMatchWithTeams(id);
+    return sendSuccess(res, fullMatch);
+  } catch (error) {
+    await db.query('ROLLBACK');
+    return sendError(res, 500, 'Erreur lors de l\'enregistrement de la composition.', error.message);
   }
 });
 
