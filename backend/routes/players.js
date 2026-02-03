@@ -87,7 +87,14 @@ router.get('/stats', async (req, res) => {
     const playerIds = playersRows.map(row => row.id);
 
     const statsSql = `
-      WITH match_scores AS (
+      WITH complete_matches AS (
+        SELECT match_id
+        FROM match_players
+        GROUP BY match_id
+        HAVING COUNT(*) = 10
+           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      ),
+      match_scores AS (
         SELECT
           m.id,
           m.played_at,
@@ -96,6 +103,7 @@ router.get('/stats', async (req, res) => {
           m.team_a_score,
           m.team_b_score
         FROM matches m
+        JOIN complete_matches cm ON cm.match_id = m.id
         JOIN match_players mp ON mp.match_id = m.id
         WHERE m.status = 'played'
       ),
@@ -120,7 +128,14 @@ router.get('/stats', async (req, res) => {
     `;
 
     const recentFormSql = `
-      WITH match_scores AS (
+      WITH complete_matches AS (
+        SELECT match_id
+        FROM match_players
+        GROUP BY match_id
+        HAVING COUNT(*) = 10
+           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      ),
+      match_scores AS (
         SELECT
           m.id,
           m.played_at,
@@ -129,6 +144,7 @@ router.get('/stats', async (req, res) => {
           m.team_a_score,
           m.team_b_score
         FROM matches m
+        JOIN complete_matches cm ON cm.match_id = m.id
         JOIN match_players mp ON mp.match_id = m.id
         WHERE m.status = 'played'
       ),

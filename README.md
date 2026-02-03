@@ -14,7 +14,9 @@ Projet **Node.js / Express / Postgres** avec un front **HTML/CSS/JS vanilla**.
      ├─ matches.js
      └─ kpis.js
   └─ data/
-     └─ schema.postgres.sql
+     ├─ schema.postgres.sql
+     └─ migrations/
+        └─ 20260203_add_reservation_and_optional_team.sql
 ./frontend
   └─ index.html
 ```
@@ -65,6 +67,12 @@ Dans Supabase > SQL Editor, exécuter :
 -- fichier: backend/data/schema.postgres.sql
 ```
 
+Puis appliquer la migration :
+
+```sql
+-- fichier: backend/data/migrations/20260203_add_reservation_and_optional_team.sql
+```
+
 ## API REST
 
 Format de réponse :
@@ -102,6 +110,7 @@ En cas d’erreur :
 - `POST /api/matches`
 - `PUT /api/matches/:id`
 - `DELETE /api/matches/:id`
+- `POST /api/matches/:id/compo`
 - `POST /api/matches/:id/score`
 - `DELETE /api/matches/:id/score`
 
@@ -111,8 +120,29 @@ En cas d’erreur :
 {
   "played_at": "2026-02-01T19:00:00.000Z",
   "location": "Gymnase Suresnes",
-  "teamA": ["uuid1", "uuid2", "uuid3", "uuid4", "uuid5"],
-  "teamB": ["uuid6", "uuid7", "uuid8", "uuid9", "uuid10"]
+  "reservation_url": "https://urbansoccer.com/booking/...",
+  "players": ["uuid1", "uuid2", "uuid3", "uuid4", "uuid5", "uuid6", "uuid7", "uuid8", "uuid9", "uuid10"]
+}
+```
+
+#### Payload (POST /api/matches/:id/compo)
+
+```json
+{
+  "teamA": [
+    { "player_id": "uuid1", "position": 1 },
+    { "player_id": "uuid2", "position": 2 },
+    { "player_id": "uuid3", "position": 3 },
+    { "player_id": "uuid4", "position": 4 },
+    { "player_id": "uuid5", "position": 5 }
+  ],
+  "teamB": [
+    { "player_id": "uuid6", "position": 1 },
+    { "player_id": "uuid7", "position": 2 },
+    { "player_id": "uuid8", "position": 3 },
+    { "player_id": "uuid9", "position": 4 },
+    { "player_id": "uuid10", "position": 5 }
+  ]
 }
 ```
 
