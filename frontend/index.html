@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monop’Foot — Organisateur 5v5</title>
+  <style>
+    /* ==========================================================================
+       RESET & BASE
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --brand: #FF7A1A;
+      --brand-hover: #E86B15;
+      --brand-soft: #FFF1E5;
+      --dark: #1F2430;
+      --text: #1A1A1A;
+      --text-muted: #6B7280;
+      --card-bg: #F3F4F6;
+      --white: #FFFFFF;
+      --success: #16A34A;
+      --warning: #F59E0B;
+      --danger: #DC2626;
+      --link: #FF7A1A;
+
+      --font-title: "Poppins", "Montserrat", "Segoe UI", Arial, sans-serif;
+      --font-body: "Inter", "Segoe UI", Arial, sans-serif;
+
+      --shadow-sm: 0px 2px 8px rgba(0,0,0,0.08);
+      --shadow-cta: 0px 4px 12px rgba(255, 122, 26, 0.25);
+      --radius: 10px;
+
+      --space-xs: 6px;
+      --space-sm: 10px;
+      --space-md: 16px;
+      --space-lg: 24px;
+      --space-xl: 32px;
+      --space-2xl: 48px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      color: var(--text);
+      background: #FAFAFB;
+      line-height: 1.5;
+    }
+
+    a { color: var(--link); text-decoration: none; }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 var(--space-lg);
+    }
+
+    section {
+      padding: var(--space-2xl) 0;
+    }
+
+    /* ==========================================================================
+       HEADER
+       ========================================================================== */
+    header {
+      background: var(--dark);
+      color: var(--white);
+      padding: 12px 0;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+    }
+
+    .header-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-lg);
+      flex-wrap: wrap;
+      min-height: 96px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      align-self: center;
+      padding-top: 0;
+    }
+
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      line-height: 1.2;
+      padding-top: 0;
+    }
+
+    .logo-icon {
+      width: 720px;
+      height: 92px;
+      border-radius: 0;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      overflow: hidden;
+    }
+
+    .logo-icon img {
+      max-height: 184px;
+      height: 184px;
+      width: auto;
+      object-fit: contain;
+      display: block;
+    }
+
+    .logo-title {
+      font-family: var(--font-title);
+      font-weight: 700;
+      font-size: 1.4rem;
+    }
+
+    .logo-subtitle {
+      font-size: 0.85rem;
+      color: #C9CEDA;
+      margin-top: 2px;
+    }
+
+    nav {
+      align-self: center;
+    }
+
+    nav ul {
+      list-style: none;
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      color: var(--white);
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: color 150ms ease, background 150ms ease;
+      font-weight: 600;
+    }
+
+    nav a:hover {
+      color: var(--brand);
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* ==========================================================================
+       TITRES
+       ========================================================================== */
+    h1, h2, h3 {
+      font-family: var(--font-title);
+      color: var(--text);
+    }
+
+    h1 { font-size: 36px; font-weight: 700; }
+    h2 { font-size: 28px; font-weight: 600; }
+    h3 { font-size: 22px; font-weight: 600; }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+    }
+
+    .section-title::before {
+      content: '';
+      width: 4px;
+      height: 28px;
+      border-radius: 999px;
+      background: var(--brand);
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      margin-bottom: var(--space-xl);
+    }
+
+    /* ==========================================================================
+       BOUTONS
+       ========================================================================== */
+    .btn {
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 150ms ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--brand);
+      color: var(--white);
+      box-shadow: var(--shadow-cta);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--brand-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1.5px solid var(--brand);
+      color: var(--brand);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--brand-soft);
+    }
+
+    .btn-muted {
+      background: #E5E7EB;
+      color: #111827;
+    }
+
+    .btn-sm {
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ==========================================================================
+       TABLES
+       ========================================================================== */
+    .table-wrapper {
+      background: var(--white);
+      border-radius: 14px;
+      box-shadow: var(--shadow-sm);
+      overflow-x: auto;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--card-bg);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #E5E7EB;
+    }
+
+    tbody tr:last-child { border-bottom: none; }
+
+    tbody tr:hover { background: #FFF7F0; }
+
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+
+    /* ==========================================================================
+       CARDS
+       ========================================================================== */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .card {
+      background: var(--white);
+      border: 1px solid #E5E7EB;
+      border-radius: 14px;
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+    }
+
+    .card-badge {
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-sm);
+      margin-bottom: var(--space-sm);
+    }
+
+    .card-title {
+      font-family: var(--font-title);
+      font-size: 1rem;
+      font-weight: 600;
+    }
+
+    .card-subtitle { color: var(--text-muted); font-size: 0.85rem; }
+
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: var(--space-sm); }
+
+    .match-teams { display: grid; gap: 4px; margin: var(--space-sm) 0; }
+    .match-team { font-weight: 600; }
+    .match-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+    .match-kpi {
+      background: #F9FAFB;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .match-kpi strong { display: block; color: var(--text); font-size: 0.95rem; }
+
+    /* ==========================================================================
+       KPI
+       ========================================================================== */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: var(--space-lg);
+    }
+
+    .kpi-card {
+      background: var(--white);
+      border-radius: 14px;
+      padding: var(--space-lg);
+      box-shadow: var(--shadow-sm);
+      position: relative;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--brand) 0%, #FFD2B0 100%);
+      border-radius: 14px 14px 0 0;
+    }
+
+    .kpi-title {
+      font-size: 0.8rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: var(--space-sm);
+    }
+
+    .kpi-value {
+      font-family: var(--font-title);
+      font-size: 2rem;
+      margin-bottom: var(--space-xs);
+    }
+
+    .kpi-chart {
+      margin-top: var(--space-sm);
+      display: grid;
+      gap: 6px;
+    }
+
+    .kpi-chart-row {
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .kpi-bar {
+      height: 8px;
+      background: #E5E7EB;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .kpi-bar span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, var(--brand) 0%, #FFB37A 100%);
+    }
+
+    /* ==========================================================================
+       FORMS & MODALS
+       ========================================================================== */
+    .table-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-md);
+      margin-bottom: var(--space-md);
+      flex-wrap: wrap;
+    }
+
+    .search-bar {
+      position: relative;
+      max-width: 320px;
+      width: 100%;
+    }
+
+    .search-bar input {
+      width: 100%;
+      padding: 10px 12px 10px 36px;
+      border-radius: 10px;
+      border: 1px solid #E5E7EB;
+      background: var(--white);
+    }
+
+    .search-bar::before {
+      content: '🔍';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      opacity: 0.5;
+    }
+
+    .filter-bar select {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #E5E7EB;
+      background: var(--white);
+      min-width: 220px;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 150ms ease;
+      z-index: 200;
+    }
+
+    .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+
+    .modal {
+      background: var(--white);
+      border-radius: 14px;
+      padding: var(--space-lg);
+      width: min(640px, 92vw);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.2);
+      transform: translateY(12px);
+      transition: transform 150ms ease;
+    }
+
+    .modal-backdrop.show .modal { transform: translateY(0); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--space-md);
+    }
+
+    .modal-title {
+      font-family: var(--font-title);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .modal-body { display: grid; gap: 12px; }
+
+    .form-group { display: grid; gap: 6px; }
+    .form-group label { color: var(--text-muted); font-size: 0.85rem; }
+    .form-group input,
+    .form-group select {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #E5E7EB;
+      background: var(--white);
+    }
+
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: var(--space-md); }
+
+    .icon-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+
+    .helper-text { color: var(--text-muted); font-size: 0.85rem; }
+
+    .roster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    .roster-title {
+      font-weight: 600;
+      color: var(--text);
+      margin-top: 8px;
+    }
+
+    .roster-count { font-size: 0.85rem; color: var(--text-muted); }
+
+    .status-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+
+    .status-scheduled {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+
+    .status-played {
+      background: rgba(22, 163, 74, 0.12);
+      color: var(--success);
+    }
+
+    .score-cell {
+      font-family: var(--font-title);
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+    }
+
+    .score-winner { background: rgba(22,163,74,0.12); color: var(--success); }
+    .score-loser { color: var(--text-muted); }
+
+    .winner-badge {
+      display: inline-flex;
+      gap: 6px;
+      align-items: center;
+      background: rgba(22,163,74,0.12);
+      color: var(--success);
+      padding: 4px 8px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .winner-badge.tie {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warning);
+    }
+
+    .form-indicator {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+    }
+
+    .form-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+
+    .form-win { background: var(--success); }
+    .form-loss { background: var(--danger); }
+    .form-draw { background: #9CA3AF; }
+    .form-empty {
+      background: #E5E7EB;
+      color: #9CA3AF;
+      border: 1px dashed #D1D5DB;
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--dark);
+      color: var(--white);
+      padding: 12px 18px;
+      border-radius: 10px;
+      opacity: 0;
+      transform: translateY(12px);
+      transition: all 150ms ease;
+      z-index: 300;
+    }
+
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      padding: var(--space-2xl);
+    }
+
+    .pagination {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      align-items: center;
+      margin-top: var(--space-md);
+    }
+
+    /* ==========================================================================
+       RESPONSIVE
+       ========================================================================== */
+    @media (max-width: 900px) {
+      .header-content { flex-direction: column; text-align: center; }
+      nav ul { justify-content: center; }
+    }
+
+    @media (max-width: 640px) {
+      th, td { padding: 10px 12px; }
+      .table-actions { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <div class="header-content">
+        <div class="logo">
+          <div class="logo-icon">
+            <img src="./assets/monopfoot-logo.png.png" alt="Monop’Foot">
+          </div>
+          <div class="logo-text"></div>
+        </div>
+        <nav>
+          <ul>
+            <li><a href="#joueurs">Joueurs</a></li>
+            <li><a href="#parties">Parties</a></li>
+            <li><a href="#scores">Historique</a></li>
+            <li><a href="#kpi">KPIs</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <section id="joueurs">
+    <div class="container">
+      <h2 class="section-title">Joueurs</h2>
+      <p class="section-subtitle">Les membres et leurs performances en 5v5</p>
+
+      <div class="table-actions">
+        <div class="search-bar">
+          <input id="searchPlayers" type="text" placeholder="Rechercher un joueur...">
+        </div>
+        <button class="btn btn-primary" id="addPlayerBtn">+ Ajouter un joueur</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table id="playersTable">
+          <thead>
+            <tr>
+              <th data-sort="name">Joueur</th>
+              <th data-sort="parties" class="text-center">Matchs</th>
+              <th data-sort="wins" class="text-center">Victoires</th>
+              <th data-sort="winRate" class="text-center">Taux</th>
+              <th data-sort="avgGoalsForPerMatch" class="text-center">Buts moyens / match</th>
+              <th data-sort="recentForm" class="text-center">Forme récente</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="playersBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="parties">
+    <div class="container">
+      <h2 class="section-title">Parties</h2>
+      <p class="section-subtitle">Planifiez un match 5v5 et saisissez le score final après la partie</p>
+
+      <div class="table-actions">
+        <div></div>
+        <button class="btn btn-primary" id="addMatchBtn">+ Ajouter un match</button>
+      </div>
+
+      <div class="cards-grid" id="matchesGrid"></div>
+      <div class="empty-state" id="matchesEmpty" style="display:none;">
+        ⚽ Aucun match planifié pour le moment
+      </div>
+    </div>
+  </section>
+
+  <section id="scores">
+    <div class="container">
+      <h2 class="section-title">Historique & scores</h2>
+      <p class="section-subtitle">Les matchs joués (10 par page)</p>
+
+      <div class="table-actions">
+        <div class="filter-bar">
+          <select id="playerFilter">
+            <option value="">Tous les joueurs</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Équipe A</th>
+              <th class="text-center">Score A</th>
+              <th>Équipe B</th>
+              <th class="text-center">Score B</th>
+              <th>Vainqueur</th>
+            </tr>
+          </thead>
+          <tbody id="scoresBody"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination" id="scoresPagination" style="display:none;">
+        <span id="scoresPaginationLabel" class="helper-text"></span>
+        <button class="btn btn-secondary btn-sm" id="scoresPrevBtn">Précédent</button>
+        <button class="btn btn-secondary btn-sm" id="scoresNextBtn">Suivant</button>
+      </div>
+
+      <div class="empty-state" id="scoresEmpty" style="display:none;">
+        Aucun match joué trouvé.
+      </div>
+    </div>
+  </section>
+
+  <section id="kpi">
+    <div class="container">
+      <h2 class="section-title">KPIs & Performances</h2>
+      <p class="section-subtitle">Chiffres clés et meilleurs joueurs</p>
+
+      <div class="kpi-grid" id="kpiGrid"></div>
+    </div>
+  </section>
+
+  <div class="toast" id="toast"></div>
+
+  <!-- Modal Joueur -->
+  <div class="modal-backdrop" id="playerModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="playerModalTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="playerModalTitle">Ajouter un joueur</div>
+        <button class="icon-btn" id="closePlayerModalBtn">✖</button>
+      </div>
+      <form id="playerForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="firstName">Prénom *</label>
+            <input id="firstName" name="first_name" type="text" required>
+          </div>
+          <div class="form-group">
+            <label for="lastName">Nom *</label>
+            <input id="lastName" name="last_name" type="text" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email">
+          </div>
+          <div class="form-group">
+            <label for="phone">Téléphone</label>
+            <input id="phone" name="phone" type="tel">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelPlayerModalBtn">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="savePlayerBtn">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Match -->
+  <div class="modal-backdrop" id="matchModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="matchModalTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="matchModalTitle">Ajouter un match</div>
+        <button class="icon-btn" id="closeMatchModalBtn">✖</button>
+      </div>
+      <form id="matchForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="matchPlayedAt">Date & heure *</label>
+            <input id="matchPlayedAt" name="played_at" type="datetime-local" required>
+          </div>
+          <div class="form-group">
+            <label for="matchLocation">Lieu *</label>
+            <input id="matchLocation" name="location" type="text" required>
+          </div>
+
+          <div class="roster-title">Équipe A (5 joueurs)</div>
+          <div class="roster-grid" id="teamASelects"></div>
+
+          <div class="roster-title">Équipe B (5 joueurs)</div>
+          <div class="roster-grid" id="teamBSelects"></div>
+
+          <div class="roster-count" id="rosterCount">0/10 joueurs sélectionnés</div>
+          <div class="helper-text">Les 10 joueurs doivent être distincts.</div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelMatchModalBtn">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="saveMatchBtn" disabled>Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal Score -->
+  <div class="modal-backdrop" id="scoreModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="scoreModalTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="scoreModalTitle">Saisir le score final</div>
+        <button class="icon-btn" id="closeScoreModalBtn">✖</button>
+      </div>
+      <form id="scoreForm">
+        <div class="modal-body">
+          <div class="helper-text" id="scoreTeams"></div>
+          <div class="form-group">
+            <label for="teamAScore">Score équipe A *</label>
+            <input id="teamAScore" type="number" min="0" required>
+          </div>
+          <div class="form-group">
+            <label for="teamBScore">Score équipe B *</label>
+            <input id="teamBScore" type="number" min="0" required>
+          </div>
+          <div class="helper-text">Saisie après match joué.</div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelScoreModalBtn">Annuler</button>
+          <button type="submit" class="btn btn-primary" id="saveScoreBtn">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE_URL = (() => {
+      const localHosts = ['localhost', '127.0.0.1'];
+      return localHosts.includes(window.location.hostname)
+        ? 'http://localhost:3000'
+        : 'https://YOUR-RENDER-BACKEND.onrender.com';
+    })();
+
+    const API_PLAYERS = `${API_BASE_URL}/api/players`;
+    const API_PLAYER_STATS = `${API_BASE_URL}/api/players/stats`;
+    const API_MATCHES = `${API_BASE_URL}/api/matches`;
+    const API_KPIS = `${API_BASE_URL}/api/kpis`;
+
+    let players = [];
+    let playersStats = [];
+    let matches = [];
+
+    let scoresState = {
+      items: [],
+      limit: 10,
+      offset: 0,
+      total: 0,
+      filterPlayerId: null
+    };
+
+    let kpiState = {
+      playersCount: 0,
+      playedMatchesCount: 0,
+      matchesByMonth: [],
+      topWinners: [],
+      topScorer: null
+    };
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function normalizePlayer(row) {
+      return {
+        ...row,
+        name: `${row.first_name} ${row.last_name}`.trim()
+      };
+    }
+
+    function formatDateShort(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function formatDateTime(dateStr) {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function toLocalInputValue(dateStr) {
+      const date = dateStr ? new Date(dateStr) : new Date();
+      const tzOffset = date.getTimezoneOffset() * 60000;
+      return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    }
+
+    function getDisplayName(player) {
+      if (!player) return 'Joueur inconnu';
+      if (player.name) return player.name;
+      return `${player.first_name || ''} ${player.last_name || ''}`.trim();
+    }
+
+    function buildTeamLabel(team) {
+      return team.map(p => getDisplayName(p)).join(', ');
+    }
+
+    async function fetchJson(url, options = {}) {
+      const response = await fetch(url, options);
+      const payload = await response.json();
+      if (!response.ok || !payload.success) {
+        throw new Error(payload?.error?.message || 'Erreur API');
+      }
+      return payload.data;
+    }
+
+    async function loadPlayers(query = '') {
+      players = (await fetchJson(API_PLAYERS)).map(normalizePlayer);
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
+      const statsUrl = params.toString() ? `${API_PLAYER_STATS}?${params}` : API_PLAYER_STATS;
+      const statsData = await fetchJson(statsUrl);
+
+      playersStats = (statsData.items || []).map(item => {
+        const stats = item.stats || {};
+        return {
+          ...normalizePlayer(item),
+          games: Number(stats.playedMatches) || 0,
+          wins: Number(stats.wins) || 0,
+          winRate: Number(stats.winRate) || 0,
+          avgGoalsForPerMatch: stats.avgGoalsForPerMatch === null || stats.avgGoalsForPerMatch === undefined
+            ? null
+            : Number(stats.avgGoalsForPerMatch),
+          recentForm: Array.isArray(stats.recentForm) ? stats.recentForm : []
+        };
+      });
+    }
+
+    async function savePlayer(payload, playerId = null) {
+      const method = playerId ? 'PUT' : 'POST';
+      const url = playerId ? `${API_PLAYERS}/${playerId}` : API_PLAYERS;
+      await fetchJson(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    async function deletePlayer(playerId) {
+      await fetchJson(`${API_PLAYERS}/${playerId}`, { method: 'DELETE' });
+    }
+
+    async function loadMatches() {
+      matches = await fetchJson(API_MATCHES);
+    }
+
+    async function saveMatch(payload, matchId = null) {
+      const method = matchId ? 'PUT' : 'POST';
+      const url = matchId ? `${API_MATCHES}/${matchId}` : API_MATCHES;
+      await fetchJson(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
+
+    async function deleteMatch(matchId) {
+      await fetchJson(`${API_MATCHES}/${matchId}`, { method: 'DELETE' });
+    }
+
+    async function saveScore(matchId, teamAScore, teamBScore) {
+      await fetchJson(`${API_MATCHES}/${matchId}/score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_a_score: teamAScore, team_b_score: teamBScore })
+      });
+    }
+
+    async function fetchPlayedMatches({ limit = 10, offset = 0, playerId = null } = {}) {
+      const params = new URLSearchParams();
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      if (playerId) params.set('player_id', String(playerId));
+      return fetchJson(`${API_MATCHES}/played?${params.toString()}`);
+    }
+
+    async function loadKpis() {
+      kpiState = await fetchJson(API_KPIS);
+    }
+
+    function renderPlayersTable(filter = '', sortKey = 'winRate', sortDir = 'desc') {
+      const tbody = document.getElementById('playersBody');
+      let data = [...playersStats];
+
+      if (filter) {
+        const lower = filter.toLowerCase();
+        data = data.filter(p => p.name.toLowerCase().includes(lower));
+      }
+
+      const getSortValue = (item) => {
+        switch (sortKey) {
+          case 'name': return item.name.toLowerCase();
+          case 'parties': return item.games;
+          case 'wins': return item.wins;
+          case 'winRate': return item.winRate;
+          case 'avgGoalsForPerMatch': return item.avgGoalsForPerMatch === null ? -1 : item.avgGoalsForPerMatch;
+          case 'recentForm': return (item.recentForm || []).filter(r => r === 'W').length;
+          default: return item.name.toLowerCase();
+        }
+      };
+
+      data.sort((a, b) => {
+        const valA = getSortValue(a);
+        const valB = getSortValue(b);
+        if (valA === valB) return a.name.localeCompare(b.name);
+        return sortDir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
+      });
+
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun joueur.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = data.map(player => {
+        const results = player.recentForm || [];
+        const dots = results.map(result => {
+          const cls = result === 'W' ? 'form-win' : result === 'L' ? 'form-loss' : 'form-draw';
+          return `<span class="form-dot ${cls}">${result}</span>`;
+        }).join('');
+        const missing = Math.max(0, 5 - results.length);
+        const empties = Array.from({ length: missing }).map(() => '<span class="form-dot form-empty">•</span>').join('');
+
+        return `
+          <tr data-player-id="${player.id}">
+            <td><strong>${player.name}</strong></td>
+            <td class="text-center">${player.games}</td>
+            <td class="text-center">${player.wins}</td>
+            <td class="text-center">${player.winRate}%</td>
+            <td class="text-center">${player.avgGoalsForPerMatch === null ? '—' : player.avgGoalsForPerMatch}</td>
+            <td class="text-center">
+              <div class="form-indicator">${dots}${empties}</div>
+            </td>
+            <td class="text-right">
+              <button class="btn btn-muted btn-sm" data-action="edit-player">✏️</button>
+              <button class="btn btn-muted btn-sm" data-action="delete-player">🗑</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function populatePlayerFilter() {
+      const select = document.getElementById('playerFilter');
+      while (select.options.length > 1) select.remove(1);
+      [...players].sort((a, b) => a.name.localeCompare(b.name)).forEach(player => {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = player.name;
+        select.appendChild(option);
+      });
+    }
+
+    function renderMatches() {
+      const grid = document.getElementById('matchesGrid');
+      const empty = document.getElementById('matchesEmpty');
+
+      if (!matches.length) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+
+      empty.style.display = 'none';
+      grid.innerHTML = matches.map(match => {
+        const teamALabel = buildTeamLabel(match.teamA || []);
+        const teamBLabel = buildTeamLabel(match.teamB || []);
+        const isPlayed = match.status === 'played';
+        const winner = match.team_a_score === match.team_b_score ? 'Égalité'
+          : (match.team_a_score > match.team_b_score ? 'Équipe A' : 'Équipe B');
+
+        return `
+          <div class="card" data-match-id="${match.id}">
+            <div class="card-header">
+              <div>
+                <div class="card-title">${formatDateTime(match.played_at)}</div>
+                <div class="card-subtitle">📍 ${match.location}</div>
+              </div>
+              <span class="status-badge ${isPlayed ? 'status-played' : 'status-scheduled'}">
+                ${isPlayed ? 'Joué' : 'Planifié'}
+              </span>
+            </div>
+            <div class="match-teams">
+              <div class="match-team">Équipe A : ${teamALabel}</div>
+              <div class="match-team">Équipe B : ${teamBLabel}</div>
+            </div>
+            <div class="match-kpis">
+              <div class="match-kpi">Score final<strong>${isPlayed ? `${match.team_a_score} - ${match.team_b_score}` : '—'}</strong></div>
+              <div class="match-kpi">Vainqueur<strong>${isPlayed ? winner : '—'}</strong></div>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-secondary btn-sm" data-action="edit-match" ${isPlayed ? 'disabled' : ''}>✏️ Modifier</button>
+              <button class="btn btn-secondary btn-sm" data-action="delete-match">🗑 Supprimer</button>
+              <button class="btn btn-primary btn-sm" data-action="score-match">⚽ Saisir score</button>
+              <button class="btn btn-muted btn-sm" data-action="copy-match">📱 Copier WhatsApp</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderScoresTable() {
+      const tbody = document.getElementById('scoresBody');
+      const empty = document.getElementById('scoresEmpty');
+      const tableWrapper = tbody.closest('.table-wrapper');
+
+      if (!scoresState.items.length) {
+        tableWrapper.style.display = 'none';
+        empty.style.display = 'block';
+        updateScoresPagination();
+        return;
+      }
+
+      empty.style.display = 'none';
+      tableWrapper.style.display = 'block';
+
+      tbody.innerHTML = scoresState.items.map(match => {
+        const teamALabel = buildTeamLabel(match.teamA || []);
+        const teamBLabel = buildTeamLabel(match.teamB || []);
+        const tie = match.team_a_score === match.team_b_score;
+        const teamAWins = match.team_a_score > match.team_b_score;
+        const winnerLabel = tie ? 'Égalité' : (teamAWins ? teamALabel : teamBLabel);
+
+        return `
+          <tr>
+            <td>${formatDateShort(match.played_at)}</td>
+            <td>${teamALabel}</td>
+            <td class="text-center"><span class="score-cell ${tie ? '' : (teamAWins ? 'score-winner' : 'score-loser')}">${match.team_a_score}</span></td>
+            <td>${teamBLabel}</td>
+            <td class="text-center"><span class="score-cell ${tie ? '' : (!teamAWins ? 'score-winner' : 'score-loser')}">${match.team_b_score}</span></td>
+            <td><span class="winner-badge ${tie ? 'tie' : ''}">🏆 ${winnerLabel}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      updateScoresPagination();
+    }
+
+    function updateScoresPagination() {
+      const pagination = document.getElementById('scoresPagination');
+      const label = document.getElementById('scoresPaginationLabel');
+      const prevBtn = document.getElementById('scoresPrevBtn');
+      const nextBtn = document.getElementById('scoresNextBtn');
+
+      const { limit, offset, total } = scoresState;
+      if (total <= limit) {
+        pagination.style.display = 'none';
+        return;
+      }
+
+      const start = total === 0 ? 0 : offset + 1;
+      const end = Math.min(offset + limit, total);
+      label.textContent = `Affichage ${start}-${end} sur ${total}`;
+      prevBtn.disabled = offset <= 0;
+      nextBtn.disabled = offset + limit >= total;
+      pagination.style.display = 'flex';
+    }
+
+    function renderKpis() {
+      const grid = document.getElementById('kpiGrid');
+      const maxMatches = Math.max(...kpiState.matchesByMonth.map(item => item.count), 0);
+
+      grid.innerHTML = `
+        <div class="kpi-card">
+          <div class="kpi-title">📊 Statistiques globales</div>
+          <div class="kpi-value">${kpiState.playedMatchesCount}</div>
+          <div class="helper-text">matchs joués</div>
+          <div style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">
+            ${kpiState.playersCount} joueurs inscrits
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">🏆 Top 3 (victoires)</div>
+          ${kpiState.topWinners.length ? `
+            <div style="display:grid; gap:10px;">
+              ${kpiState.topWinners.map((entry, idx) => `
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <span class="card-badge">#${idx + 1}</span>
+                  <div>
+                    <div style="font-weight:600;">${getDisplayName(entry.player)}</div>
+                    <div class="helper-text">${entry.wins} victoires</div>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          ` : '<div class="helper-text">Aucune victoire enregistrée</div>'}
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">🔥 Top score (proxy)</div>
+          ${kpiState.topScorer ? `
+            <div class="kpi-value">${getDisplayName(kpiState.topScorer.player)}</div>
+            <div class="helper-text">${kpiState.topScorer.goalsFor} buts marqués par son équipe (quand il joue)</div>
+          ` : '<div class="helper-text">Aucun match joué</div>'}
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">📅 Matchs joués par mois</div>
+          ${kpiState.matchesByMonth.length ? `
+            <div class="kpi-chart">
+              ${kpiState.matchesByMonth.map(item => {
+                const ratio = maxMatches > 0 ? Math.round((item.count / maxMatches) * 100) : 0;
+                return `
+                  <div class="kpi-chart-row">
+                    <div>${item.label}</div>
+                    <div class="kpi-bar"><span style="width:${ratio}%"></span></div>
+                    <div>${item.count}</div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : '<div class="helper-text">Aucun match joué</div>'}
+        </div>
+      `;
+    }
+
+    function populateRosterSelects(match = null) {
+      const teamAContainer = document.getElementById('teamASelects');
+      const teamBContainer = document.getElementById('teamBSelects');
+      teamAContainer.innerHTML = '';
+      teamBContainer.innerHTML = '';
+
+      const sortedPlayers = [...players].sort((a, b) => a.name.localeCompare(b.name));
+      const createSelect = (id) => {
+        const select = document.createElement('select');
+        select.className = 'match-player-select';
+        select.dataset.role = id;
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Sélectionner un joueur';
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.appendChild(placeholder);
+        sortedPlayers.forEach(player => {
+          const option = document.createElement('option');
+          option.value = player.id;
+          option.textContent = player.name;
+          select.appendChild(option);
+        });
+        return select;
+      };
+
+      for (let i = 1; i <= 5; i += 1) {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        group.innerHTML = `<label>Équipe A — Joueur ${i} *</label>`;
+        const select = createSelect(`A${i}`);
+        group.appendChild(select);
+        teamAContainer.appendChild(group);
+      }
+
+      for (let i = 1; i <= 5; i += 1) {
+        const group = document.createElement('div');
+        group.className = 'form-group';
+        group.innerHTML = `<label>Équipe B — Joueur ${i} *</label>`;
+        const select = createSelect(`B${i}`);
+        group.appendChild(select);
+        teamBContainer.appendChild(group);
+      }
+
+      if (match) {
+        (match.teamA || []).forEach((player, idx) => {
+          const select = teamAContainer.querySelectorAll('select')[idx];
+          if (select) select.value = player.id;
+        });
+        (match.teamB || []).forEach((player, idx) => {
+          const select = teamBContainer.querySelectorAll('select')[idx];
+          if (select) select.value = player.id;
+        });
+      }
+
+      syncRosterSelects();
+      teamAContainer.querySelectorAll('select').forEach(select => select.addEventListener('change', syncRosterSelects));
+      teamBContainer.querySelectorAll('select').forEach(select => select.addEventListener('change', syncRosterSelects));
+    }
+
+    function syncRosterSelects() {
+      const selects = Array.from(document.querySelectorAll('.match-player-select'));
+      const selected = selects.map(s => s.value).filter(Boolean);
+      const unique = new Set(selected);
+      const rosterCount = document.getElementById('rosterCount');
+      rosterCount.textContent = `${unique.size}/10 joueurs sélectionnés`;
+
+      selects.forEach(select => {
+        Array.from(select.options).forEach(option => {
+          if (!option.value) return;
+          option.disabled = selected.includes(option.value) && option.value !== select.value;
+        });
+      });
+
+      const saveBtn = document.getElementById('saveMatchBtn');
+      saveBtn.disabled = unique.size !== 10;
+    }
+
+    function getRosterPayload() {
+      const selects = Array.from(document.querySelectorAll('.match-player-select'));
+      const teamA = selects.filter(s => s.dataset.role?.startsWith('A')).map(s => s.value);
+      const teamB = selects.filter(s => s.dataset.role?.startsWith('B')).map(s => s.value);
+      return { teamA, teamB };
+    }
+
+    function setupModals() {
+      const playerModal = document.getElementById('playerModal');
+      const playerForm = document.getElementById('playerForm');
+
+      const matchModal = document.getElementById('matchModal');
+      const matchForm = document.getElementById('matchForm');
+
+      const scoreModal = document.getElementById('scoreModal');
+      const scoreForm = document.getElementById('scoreForm');
+
+      function closeModal(modal, form) {
+        modal.classList.remove('show');
+        if (form) {
+          form.reset();
+          form.dataset.mode = '';
+          form.dataset.entityId = '';
+        }
+      }
+
+      document.getElementById('closePlayerModalBtn').addEventListener('click', () => closeModal(playerModal, playerForm));
+      document.getElementById('cancelPlayerModalBtn').addEventListener('click', () => closeModal(playerModal, playerForm));
+      playerModal.addEventListener('click', (event) => { if (event.target === playerModal) closeModal(playerModal, playerForm); });
+
+      document.getElementById('closeMatchModalBtn').addEventListener('click', () => closeModal(matchModal, matchForm));
+      document.getElementById('cancelMatchModalBtn').addEventListener('click', () => closeModal(matchModal, matchForm));
+      matchModal.addEventListener('click', (event) => { if (event.target === matchModal) closeModal(matchModal, matchForm); });
+
+      document.getElementById('closeScoreModalBtn').addEventListener('click', () => closeModal(scoreModal, scoreForm));
+      document.getElementById('cancelScoreModalBtn').addEventListener('click', () => closeModal(scoreModal, scoreForm));
+      scoreModal.addEventListener('click', (event) => { if (event.target === scoreModal) closeModal(scoreModal, scoreForm); });
+
+      window.openPlayerModal = (mode, player = null) => {
+        playerForm.dataset.mode = mode;
+        playerForm.dataset.entityId = player ? player.id : '';
+        document.getElementById('playerModalTitle').textContent = mode === 'edit' ? 'Modifier le joueur' : 'Ajouter un joueur';
+        document.getElementById('savePlayerBtn').textContent = mode === 'edit' ? 'Enregistrer' : 'Ajouter';
+
+        if (player) {
+          document.getElementById('firstName').value = player.first_name || '';
+          document.getElementById('lastName').value = player.last_name || '';
+          document.getElementById('email').value = player.email || '';
+          document.getElementById('phone').value = player.phone || '';
+        }
+
+        playerModal.classList.add('show');
+      };
+
+      window.openMatchModal = (mode, match = null) => {
+        matchForm.dataset.mode = mode;
+        matchForm.dataset.entityId = match ? match.id : '';
+        document.getElementById('matchModalTitle').textContent = mode === 'edit' ? 'Modifier le match' : 'Ajouter un match';
+        document.getElementById('saveMatchBtn').textContent = mode === 'edit' ? 'Enregistrer' : 'Ajouter';
+
+        populateRosterSelects(match);
+
+        if (match) {
+          document.getElementById('matchPlayedAt').value = toLocalInputValue(match.played_at);
+          document.getElementById('matchLocation').value = match.location || '';
+        } else {
+          document.getElementById('matchPlayedAt').value = toLocalInputValue();
+        }
+
+        matchModal.classList.add('show');
+      };
+
+      window.openScoreModal = (match) => {
+        scoreForm.dataset.entityId = match.id;
+        document.getElementById('scoreTeams').textContent = `Équipe A: ${buildTeamLabel(match.teamA || [])} | Équipe B: ${buildTeamLabel(match.teamB || [])}`;
+        document.getElementById('teamAScore').value = match.team_a_score ?? '';
+        document.getElementById('teamBScore').value = match.team_b_score ?? '';
+        scoreModal.classList.add('show');
+      };
+
+      playerForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+          first_name: document.getElementById('firstName').value.trim(),
+          last_name: document.getElementById('lastName').value.trim(),
+          email: document.getElementById('email').value.trim(),
+          phone: document.getElementById('phone').value.trim()
+        };
+
+        if (!payload.first_name || !payload.last_name) {
+          showToast('Prénom et nom sont obligatoires.');
+          return;
+        }
+
+        if (payload.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.email)) {
+          showToast('Email invalide.');
+          return;
+        }
+
+        try {
+          const mode = playerForm.dataset.mode;
+          const id = playerForm.dataset.entityId || null;
+          await savePlayer(payload, mode === 'edit' ? id : null);
+          await initData();
+          showToast(mode === 'edit' ? 'Joueur mis à jour.' : 'Joueur créé.');
+          closeModal(playerModal, playerForm);
+        } catch (error) {
+          showToast(error.message || 'Erreur lors de la sauvegarde.');
+        }
+      });
+
+      matchForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const payload = {
+          played_at: document.getElementById('matchPlayedAt').value,
+          location: document.getElementById('matchLocation').value.trim(),
+          ...getRosterPayload()
+        };
+
+        const allIds = [...payload.teamA, ...payload.teamB].filter(Boolean);
+        if (!payload.played_at || !payload.location) {
+          showToast('La date et le lieu sont obligatoires.');
+          return;
+        }
+        if (new Set(allIds).size !== 10) {
+          showToast('Les 10 joueurs doivent être distincts.');
+          return;
+        }
+
+        try {
+          const mode = matchForm.dataset.mode;
+          const id = matchForm.dataset.entityId || null;
+          await saveMatch(payload, mode === 'edit' ? id : null);
+          await initData();
+          showToast(mode === 'edit' ? 'Match mis à jour.' : 'Match créé.');
+          closeModal(matchModal, matchForm);
+        } catch (error) {
+          showToast(error.message || 'Erreur lors de la sauvegarde.');
+        }
+      });
+
+      scoreForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const id = scoreForm.dataset.entityId;
+        const scoreA = Number(document.getElementById('teamAScore').value);
+        const scoreB = Number(document.getElementById('teamBScore').value);
+        if (!Number.isInteger(scoreA) || scoreA < 0 || !Number.isInteger(scoreB) || scoreB < 0) {
+          showToast('Les scores doivent être des entiers positifs.');
+          return;
+        }
+        try {
+          await saveScore(id, scoreA, scoreB);
+          await initData();
+          showToast('Score enregistré.');
+          closeModal(scoreModal, scoreForm);
+        } catch (error) {
+          showToast(error.message || 'Erreur lors de la sauvegarde.');
+        }
+      });
+    }
+
+    function setupActions() {
+      document.getElementById('addPlayerBtn').addEventListener('click', () => openPlayerModal('create'));
+      document.getElementById('addMatchBtn').addEventListener('click', () => openMatchModal('create'));
+
+      document.getElementById('playersBody').addEventListener('click', (event) => {
+        const row = event.target.closest('tr[data-player-id]');
+        if (!row) return;
+        const playerId = row.dataset.playerId;
+        const player = players.find(p => p.id === playerId);
+
+        if (event.target.closest('[data-action="edit-player"]')) {
+          openPlayerModal('edit', player);
+        }
+
+        if (event.target.closest('[data-action="delete-player"]')) {
+          if (!confirm('Supprimer ce joueur ?')) return;
+          deletePlayer(playerId)
+            .then(() => initData())
+            .then(() => showToast('Joueur supprimé.'))
+            .catch(error => showToast(error.message || 'Erreur lors de la suppression.'));
+        }
+      });
+
+      document.getElementById('matchesGrid').addEventListener('click', (event) => {
+        const card = event.target.closest('[data-match-id]');
+        if (!card) return;
+        const matchId = card.dataset.matchId;
+        const match = matches.find(m => m.id === matchId);
+        if (!match) return;
+
+        if (event.target.closest('[data-action="edit-match"]')) {
+          if (match.status === 'played') {
+            showToast('Impossible de modifier un match joué.');
+            return;
+          }
+          openMatchModal('edit', match);
+        }
+
+        if (event.target.closest('[data-action="delete-match"]')) {
+          if (!confirm('Supprimer ce match ?')) return;
+          deleteMatch(matchId)
+            .then(() => initData())
+            .then(() => showToast('Match supprimé.'))
+            .catch(error => showToast(error.message || 'Erreur lors de la suppression.'));
+        }
+
+        if (event.target.closest('[data-action="score-match"]')) {
+          openScoreModal(match);
+        }
+
+        if (event.target.closest('[data-action="copy-match"]')) {
+          const message = `⚽ Monop’Foot\n\n📅 ${formatDateTime(match.played_at)}\n📍 ${match.location}\n👥 Équipe A: ${buildTeamLabel(match.teamA || [])}\n👥 Équipe B: ${buildTeamLabel(match.teamB || [])}\n✅ Statut: ${match.status === 'played' ? 'Joué' : 'Planifié'}`;
+          navigator.clipboard.writeText(message)
+            .then(() => showToast('Message copié !'))
+            .catch(() => showToast('Erreur lors de la copie.'));
+        }
+      });
+
+      document.getElementById('searchPlayers').addEventListener('input', async (event) => {
+        await loadPlayers(event.target.value);
+        renderPlayersTable(event.target.value, currentSort.key, currentSort.dir);
+      });
+
+      document.getElementById('playerFilter').addEventListener('change', (event) => {
+        scoresState.filterPlayerId = event.target.value || null;
+        scoresState.offset = 0;
+        loadScores();
+      });
+
+      document.getElementById('scoresPrevBtn').addEventListener('click', () => {
+        scoresState.offset = Math.max(0, scoresState.offset - scoresState.limit);
+        loadScores();
+      });
+
+      document.getElementById('scoresNextBtn').addEventListener('click', () => {
+        const next = scoresState.offset + scoresState.limit;
+        if (next < scoresState.total) {
+          scoresState.offset = next;
+          loadScores();
+        }
+      });
+    }
+
+    let currentSort = { key: 'winRate', dir: 'desc' };
+
+    function setupSort() {
+      document.querySelectorAll('#playersTable th[data-sort]').forEach(th => {
+        th.addEventListener('click', () => {
+          const key = th.dataset.sort;
+          if (currentSort.key === key) {
+            currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+          } else {
+            currentSort.key = key;
+            currentSort.dir = 'desc';
+          }
+          renderPlayersTable(document.getElementById('searchPlayers').value, currentSort.key, currentSort.dir);
+        });
+      });
+    }
+
+    async function loadScores() {
+      const data = await fetchPlayedMatches({
+        limit: scoresState.limit,
+        offset: scoresState.offset,
+        playerId: scoresState.filterPlayerId
+      });
+      scoresState.items = data.items || [];
+      scoresState.total = data.pagination?.total ?? 0;
+      scoresState.limit = data.pagination?.limit ?? scoresState.limit;
+      scoresState.offset = data.pagination?.offset ?? scoresState.offset;
+      renderScoresTable();
+    }
+
+    async function initData() {
+      try {
+        await loadPlayers(document.getElementById('searchPlayers').value || '');
+        await loadMatches();
+        await loadScores();
+        await loadKpis();
+        renderPlayersTable(document.getElementById('searchPlayers').value || '', currentSort.key, currentSort.dir);
+        populatePlayerFilter();
+        renderMatches();
+        renderKpis();
+      } catch (error) {
+        showToast(error.message || 'Erreur lors du chargement des données.');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      setupModals();
+      setupActions();
+      setupSort();
+      initData();
+    });
+  </script>
+</body>
+</html>
