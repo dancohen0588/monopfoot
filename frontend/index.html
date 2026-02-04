@@ -344,29 +344,6 @@
       }
     }
 
-    .table-card {
-      display: none;
-      background: var(--white);
-      border: 1px solid #E5E7EB;
-      border-radius: 14px;
-      padding: var(--space-md);
-      box-shadow: var(--shadow-sm);
-      margin-bottom: var(--space-md);
-    }
-
-    .table-card-row {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 6px 0;
-      border-bottom: 1px dashed #E5E7EB;
-      font-size: 0.9rem;
-    }
-
-    .table-card-row:last-child { border-bottom: none; }
-
-    .table-card-label { color: var(--text-muted); font-weight: 600; }
-    .table-card-value { text-align: right; }
 
     table { width: 100%; border-collapse: collapse; }
 
@@ -959,6 +936,11 @@
       margin-top: var(--space-md);
     }
 
+    .pagination-label {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
     /* ==========================================================================
        RESPONSIVE
        ========================================================================== */
@@ -990,9 +972,7 @@
       .modal-actions { flex-direction: column; }
       .modal-actions .btn { width: 100%; }
 
-      .table-wrapper { display: none; }
-      .table-card { display: block; }
-      #joueurs .table-wrapper { display: block; }
+      .table-wrapper { display: block; }
     }
   </style>
 </head>
@@ -1055,7 +1035,11 @@
           <tbody id="playersBody"></tbody>
         </table>
       </div>
-      <div id="playersCards"></div>
+      <div class="pagination" id="playersPagination" style="display:none;">
+        <button class="btn btn-secondary btn-sm" id="playersPrevBtn" aria-label="Page précédente">Précédent</button>
+        <span id="playersPaginationLabel" class="pagination-label"></span>
+        <button class="btn btn-secondary btn-sm" id="playersNextBtn" aria-label="Page suivante">Suivant</button>
+      </div>
     </div>
   </section>
 
@@ -1104,8 +1088,6 @@
           <tbody id="scoresBody"></tbody>
         </table>
       </div>
-      <div id="scoresCards"></div>
-
       <div class="pagination" id="scoresPagination" style="display:none;">
         <span id="scoresPaginationLabel" class="helper-text"></span>
         <button class="btn btn-secondary btn-sm" id="scoresPrevBtn">Précédent</button>
@@ -1128,6 +1110,7 @@
   </section>
 
   <div class="toast" id="toast"></div>
+  <!-- build: monopfoot-frontend 2026-02-04T21:55Z -->
 
   <!-- Modal Joueur -->
   <div class="modal-backdrop" id="playerModal">
@@ -1295,6 +1278,71 @@
       topScorer: null
     };
 
+    const PLAYERS_STATE_KEY = 'monopfoot.players.state';
+    const HISTORY_PAGE_KEY = 'monopfoot.history.page';
+
+    let playersState = {
+      page: 1,
+      q: '',
+      sort: 'winRate',
+      order: 'desc'
+    };
+
+    let playersPagination = {
+      total: 0,
+      limit: 0,
+      offset: 0
+    };
+
+    function getDefaultPlayersState() {
+      return {
+        page: 1,
+        q: '',
+        sort: 'winRate',
+        order: 'desc'
+      };
+    }
+
+    function loadPlayersState() {
+      try {
+        const raw = localStorage.getItem(PLAYERS_STATE_KEY);
+        if (!raw) return getDefaultPlayersState();
+        const parsed = JSON.parse(raw);
+        return {
+          page: Number.isInteger(parsed.page) && parsed.page > 0 ? parsed.page : 1,
+          q: typeof parsed.q === 'string' ? parsed.q : '',
+          sort: typeof parsed.sort === 'string' ? parsed.sort : 'winRate',
+          order: parsed.order === 'asc' ? 'asc' : 'desc'
+        };
+      } catch (error) {
+        return getDefaultPlayersState();
+      }
+    }
+
+    function persistPlayersState() {
+      localStorage.setItem(PLAYERS_STATE_KEY, JSON.stringify(playersState));
+    }
+
+    function getPlayersPageSize() {
+      return 10;
+    }
+
+    function loadHistoryPage() {
+      const raw = Number(localStorage.getItem(HISTORY_PAGE_KEY));
+      return Number.isInteger(raw) && raw > 0 ? raw : 1;
+    }
+
+    function persistHistoryPage(page) {
+      localStorage.setItem(HISTORY_PAGE_KEY, String(page));
+    }
+
+    function scrollPlayersToTop() {
+      if (window.innerWidth > 640) return;
+      const section = document.getElementById('joueurs');
+      if (!section) return;
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     function showToast(message) {
       const toast = document.getElementById('toast');
       toast.textContent = message;
@@ -1348,12 +1396,39 @@
       return payload.data;
     }
 
+    function mapSortKeyForApi(sortKey) {
+      if (sortKey === 'recentForm') return 'winRate';
+      return sortKey;
+    }
+
     async function loadPlayers(query = '') {
       players = (await fetchJson(API_PLAYERS)).map(normalizePlayer);
       const params = new URLSearchParams();
       if (query) params.set('q', query);
-      const statsUrl = params.toString() ? `${API_PLAYER_STATS}?${params}` : API_PLAYER_STATS;
+      const limit = getPlayersPageSize();
+      const safePage = Math.max(1, Number(playersState.page) || 1);
+      const offset = (safePage - 1) * limit;
+      params.set('limit', String(limit));
+      params.set('offset', String(offset));
+      params.set('sort', mapSortKeyForApi(playersState.sort));
+      params.set('order', playersState.order);
+      const statsUrl = `${API_PLAYER_STATS}?${params.toString()}`;
       const statsData = await fetchJson(statsUrl);
+      const pagination = statsData.pagination || {};
+      const total = Number(pagination.total || 0);
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+      const clampedPage = Math.min(Math.max(1, safePage), totalPages);
+      if (clampedPage !== safePage) {
+        playersState.page = clampedPage;
+        persistPlayersState();
+        return loadPlayers(query);
+      }
+
+      playersPagination = {
+        total,
+        limit,
+        offset: Number(pagination.offset ?? offset)
+      };
 
       playersStats = (statsData.items || []).map(item => {
         const stats = item.stats || {};
@@ -1445,36 +1520,13 @@
 
     function renderPlayersTable(filter = '', sortKey = 'winRate', sortDir = 'desc') {
       const tbody = document.getElementById('playersBody');
-      const cards = document.getElementById('playersCards');
-      let data = [...playersStats];
-
-      if (filter) {
-        const lower = filter.toLowerCase();
-        data = data.filter(p => p.name.toLowerCase().includes(lower));
-      }
-
-      const getSortValue = (item) => {
-        switch (sortKey) {
-          case 'name': return item.name.toLowerCase();
-          case 'parties': return item.games;
-          case 'wins': return item.wins;
-          case 'winRate': return item.winRate;
-          case 'avgGoalsForPerMatch': return item.avgGoalsForPerMatch === null ? -1 : item.avgGoalsForPerMatch;
-          case 'recentForm': return (item.recentForm || []).filter(r => r === 'W').length;
-          default: return item.name.toLowerCase();
-        }
-      };
-
-      data.sort((a, b) => {
-        const valA = getSortValue(a);
-        const valB = getSortValue(b);
-        if (valA === valB) return a.name.localeCompare(b.name);
-        return sortDir === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
-      });
+      const data = [...playersStats];
 
       if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun joueur.</td></tr>';
-        cards.innerHTML = '<div class="empty-state">Aucun joueur.</div>';
+        const pagination = document.getElementById('playersPagination');
+        if (pagination) pagination.style.display = 'none';
+        updatePlayersPagination();
         return;
       }
 
@@ -1505,32 +1557,52 @@
         `;
       }).join('');
 
-      cards.innerHTML = data.map(player => {
-        const results = player.recentForm || [];
-        const dots = results.map(result => {
-          const cls = result === 'W' ? 'form-win' : result === 'L' ? 'form-loss' : 'form-draw';
-          return `<span class="form-dot ${cls}">${result}</span>`;
-        }).join('');
-        const missing = Math.max(0, 5 - results.length);
-        const empties = Array.from({ length: missing }).map(() => '<span class="form-dot form-empty">•</span>').join('');
+      updatePlayersPagination();
+    }
 
-        return `
-          <div class="table-card" data-player-id="${player.id}">
-            <div class="table-card-row"><span class="table-card-label">Joueur</span><span class="table-card-value"><strong>${player.name}</strong></span></div>
-            <div class="table-card-row"><span class="table-card-label">Matchs</span><span class="table-card-value">${player.games}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Victoires</span><span class="table-card-value">${player.wins}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Taux</span><span class="table-card-value">${player.winRate}%</span></div>
-            <div class="table-card-row"><span class="table-card-label">Buts/match</span><span class="table-card-value">${player.avgGoalsForPerMatch === null ? '—' : player.avgGoalsForPerMatch}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Forme</span><span class="table-card-value"><span class="form-indicator">${dots}${empties}</span></span></div>
-            <div class="table-card-row"><span class="table-card-label">Actions</span>
-              <span class="table-card-value">
-                <button class="btn btn-muted btn-sm" data-action="edit-player">✏️</button>
-                <button class="btn btn-muted btn-sm" data-action="delete-player">🗑</button>
-              </span>
-            </div>
-          </div>
-        `;
-      }).join('');
+    function updatePlayersPagination() {
+      const pagination = document.getElementById('playersPagination');
+      const label = document.getElementById('playersPaginationLabel');
+      const prevBtn = document.getElementById('playersPrevBtn');
+      const nextBtn = document.getElementById('playersNextBtn');
+
+      if (!pagination || !label || !prevBtn || !nextBtn) return;
+
+      const total = Number(playersPagination.total || 0);
+      const limit = Number(playersPagination.limit || getPlayersPageSize());
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+      const currentPage = Math.min(Math.max(1, Number(playersState.page) || 1), totalPages);
+
+      if (total <= limit) {
+        pagination.style.display = 'none';
+        return;
+      }
+
+      label.textContent = `Page ${currentPage} / ${totalPages}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= totalPages;
+      pagination.style.display = 'flex';
+    }
+
+    function updateHistoryPagination() {
+      const pagination = document.getElementById('scoresPagination');
+      const label = document.getElementById('scoresPaginationLabel');
+      const prevBtn = document.getElementById('scoresPrevBtn');
+      const nextBtn = document.getElementById('scoresNextBtn');
+
+      const { limit, offset, total } = scoresState;
+      const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+      const currentPage = total > 0 ? Math.floor(offset / limit) + 1 : 1;
+
+      if (total <= limit) {
+        pagination.style.display = 'none';
+        return;
+      }
+
+      label.textContent = `Page ${currentPage} / ${totalPages}`;
+      prevBtn.disabled = currentPage <= 1;
+      nextBtn.disabled = currentPage >= totalPages;
+      pagination.style.display = 'flex';
     }
 
     function populatePlayerFilter() {
@@ -1603,14 +1675,12 @@
 
     function renderScoresTable() {
       const tbody = document.getElementById('scoresBody');
-      const cards = document.getElementById('scoresCards');
       const empty = document.getElementById('scoresEmpty');
       const tableWrapper = tbody.closest('.table-wrapper');
 
       if (!scoresState.items.length) {
         tableWrapper.style.display = 'none';
         empty.style.display = 'block';
-        cards.innerHTML = '';
         updateScoresPagination();
         return;
       }
@@ -1646,55 +1716,11 @@
         `;
       }).join('');
 
-      cards.innerHTML = scoresState.items.map(match => {
-        const teamALabel = buildTeamLabel(match.teamA || []);
-        const teamBLabel = buildTeamLabel(match.teamB || []);
-        if (!teamALabel || !teamBLabel) {
-          const rosterLabel = buildRosterLabel(match.roster || []);
-          return `
-            <div class="table-card">
-              <div class="table-card-row"><span class="table-card-label">Date</span><span class="table-card-value">${formatDateShort(match.played_at)}</span></div>
-              <div class="table-card-row"><span class="table-card-label">Compo</span><span class="table-card-value">Manquante</span></div>
-              <div class="table-card-row"><span class="table-card-label">Roster</span><span class="table-card-value">${rosterLabel || '—'}</span></div>
-            </div>
-          `;
-        }
-        const tie = match.team_a_score === match.team_b_score;
-        const teamAWins = match.team_a_score > match.team_b_score;
-        const winnerLabel = tie ? 'Égalité' : (teamAWins ? teamALabel : teamBLabel);
-        return `
-          <div class="table-card">
-            <div class="table-card-row"><span class="table-card-label">Date</span><span class="table-card-value">${formatDateShort(match.played_at)}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Équipe A</span><span class="table-card-value">${teamALabel}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Score A</span><span class="table-card-value">${match.team_a_score}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Équipe B</span><span class="table-card-value">${teamBLabel}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Score B</span><span class="table-card-value">${match.team_b_score}</span></div>
-            <div class="table-card-row"><span class="table-card-label">Vainqueur</span><span class="table-card-value">${winnerLabel}</span></div>
-          </div>
-        `;
-      }).join('');
-
       updateScoresPagination();
     }
 
     function updateScoresPagination() {
-      const pagination = document.getElementById('scoresPagination');
-      const label = document.getElementById('scoresPaginationLabel');
-      const prevBtn = document.getElementById('scoresPrevBtn');
-      const nextBtn = document.getElementById('scoresNextBtn');
-
-      const { limit, offset, total } = scoresState;
-      if (total <= limit) {
-        pagination.style.display = 'none';
-        return;
-      }
-
-      const start = total === 0 ? 0 : offset + 1;
-      const end = Math.min(offset + limit, total);
-      label.textContent = `Affichage ${start}-${end} sur ${total}`;
-      prevBtn.disabled = offset <= 0;
-      nextBtn.disabled = offset + limit >= total;
-      pagination.style.display = 'flex';
+      updateHistoryPagination();
     }
 
     function renderKpis() {
@@ -2306,6 +2332,30 @@
       document.getElementById('addPlayerBtn').addEventListener('click', () => openPlayerModal('create'));
       document.getElementById('addMatchBtn').addEventListener('click', () => openMatchModal('create'));
 
+      const playersPrevBtn = document.getElementById('playersPrevBtn');
+      const playersNextBtn = document.getElementById('playersNextBtn');
+      if (playersPrevBtn && playersNextBtn) {
+        playersPrevBtn.addEventListener('click', () => {
+          if (playersState.page <= 1) return;
+          playersState.page -= 1;
+          persistPlayersState();
+          loadPlayers(playersState.q)
+            .then(() => renderPlayersTable(playersState.q, playersState.sort, playersState.order))
+            .then(() => scrollPlayersToTop());
+        });
+        playersNextBtn.addEventListener('click', () => {
+          const limit = playersPagination.limit || getPlayersPageSize();
+          const total = playersPagination.total || 0;
+          const totalPages = total > 0 ? Math.ceil(total / limit) : 1;
+          if (playersState.page >= totalPages) return;
+          playersState.page += 1;
+          persistPlayersState();
+          loadPlayers(playersState.q)
+            .then(() => renderPlayersTable(playersState.q, playersState.sort, playersState.order))
+            .then(() => scrollPlayersToTop());
+        });
+      }
+
       document.getElementById('playerForm').addEventListener('keydown', (event) => {
         if (event.key === 'Enter' && event.target.tagName !== 'TEXTAREA') {
           event.preventDefault();
@@ -2388,18 +2438,25 @@
       });
 
       document.getElementById('searchPlayers').addEventListener('input', async (event) => {
-        await loadPlayers(event.target.value);
-        renderPlayersTable(event.target.value, currentSort.key, currentSort.dir);
+        const query = event.target.value;
+        playersState.q = query;
+        playersState.page = 1;
+        persistPlayersState();
+        await loadPlayers(playersState.q);
+        renderPlayersTable(playersState.q, playersState.sort, playersState.order);
       });
 
       document.getElementById('playerFilter').addEventListener('change', (event) => {
         scoresState.filterPlayerId = event.target.value || null;
         scoresState.offset = 0;
+        persistHistoryPage(1);
         loadScores();
       });
 
       document.getElementById('scoresPrevBtn').addEventListener('click', () => {
         scoresState.offset = Math.max(0, scoresState.offset - scoresState.limit);
+        const page = Math.floor(scoresState.offset / scoresState.limit) + 1;
+        persistHistoryPage(page);
         loadScores();
       });
 
@@ -2407,6 +2464,8 @@
         const next = scoresState.offset + scoresState.limit;
         if (next < scoresState.total) {
           scoresState.offset = next;
+          const page = Math.floor(scoresState.offset / scoresState.limit) + 1;
+          persistHistoryPage(page);
           loadScores();
         }
       });
@@ -2424,7 +2483,12 @@
             currentSort.key = key;
             currentSort.dir = 'desc';
           }
-          renderPlayersTable(document.getElementById('searchPlayers').value, currentSort.key, currentSort.dir);
+          playersState.sort = currentSort.key;
+          playersState.order = currentSort.dir;
+          playersState.page = 1;
+          persistPlayersState();
+          loadPlayers(playersState.q)
+            .then(() => renderPlayersTable(playersState.q, playersState.sort, playersState.order));
         });
       });
     }
@@ -2444,11 +2508,11 @@
 
     async function initData() {
       try {
-        await loadPlayers(document.getElementById('searchPlayers').value || '');
+        await loadPlayers(playersState.q || '');
         await loadMatches();
         await loadScores();
         await loadKpis();
-        renderPlayersTable(document.getElementById('searchPlayers').value || '', currentSort.key, currentSort.dir);
+        renderPlayersTable(playersState.q || '', currentSort.key, currentSort.dir);
         populatePlayerFilter();
         renderMatches();
         renderKpis();
@@ -2458,6 +2522,15 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      playersState = loadPlayersState();
+      currentSort.key = playersState.sort || 'winRate';
+      currentSort.dir = playersState.order || 'desc';
+      const searchInput = document.getElementById('searchPlayers');
+      if (searchInput) {
+        searchInput.value = playersState.q || '';
+      }
+      const historyPage = loadHistoryPage();
+      scoresState.offset = (historyPage - 1) * scoresState.limit;
       const burgerBtn = document.getElementById('burgerBtn');
       const mobileNav = document.getElementById('mobileNav');
       if (burgerBtn && mobileNav) {
@@ -2477,6 +2550,15 @@
           burgerBtn.setAttribute('aria-expanded', 'false');
         });
       }
+      window.addEventListener('resize', () => {
+        const newLimit = getPlayersPageSize();
+        if (newLimit !== playersPagination.limit) {
+          playersState.page = 1;
+          persistPlayersState();
+          loadPlayers(playersState.q)
+            .then(() => renderPlayersTable(playersState.q, playersState.sort, playersState.order));
+        }
+      });
       setupModals();
       setupActions();
       setupSort();
