@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Monop’Foot — Organisateur 5v5</title>
   <style>
     /* ==========================================================================
@@ -50,12 +50,14 @@
       color: var(--text);
       background: #FAFAFB;
       line-height: 1.5;
+      overflow-x: hidden;
     }
 
     a { color: var(--link); text-decoration: none; }
 
     .container {
       max-width: 1200px;
+      width: 100%;
       margin: 0 auto;
       padding: 0 var(--space-lg);
     }
@@ -111,6 +113,45 @@
       align-items: center;
       justify-content: flex-start;
       overflow: hidden;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+    }
+
+    .burger {
+      display: none;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: var(--white);
+      font-size: 1.4rem;
+      cursor: pointer;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mobile-nav {
+      display: none;
+      width: 100%;
+      padding: 8px 0 12px;
+    }
+
+    .mobile-nav a {
+      display: block;
+      padding: 10px 14px;
+      border-radius: 10px;
+      font-weight: 600;
+      color: var(--white);
+    }
+
+    .mobile-nav a:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--brand);
     }
 
     .logo-icon img {
@@ -269,6 +310,30 @@
       box-shadow: var(--shadow-sm);
       overflow-x: auto;
     }
+
+    .table-card {
+      display: none;
+      background: var(--white);
+      border: 1px solid #E5E7EB;
+      border-radius: 14px;
+      padding: var(--space-md);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: var(--space-md);
+    }
+
+    .table-card-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 6px 0;
+      border-bottom: 1px dashed #E5E7EB;
+      font-size: 0.9rem;
+    }
+
+    .table-card-row:last-child { border-bottom: none; }
+
+    .table-card-label { color: var(--text-muted); font-weight: 600; }
+    .table-card-value { text-align: right; }
 
     table { width: 100%; border-collapse: collapse; }
 
@@ -488,6 +553,8 @@
       box-shadow: 0 18px 40px rgba(0,0,0,0.2);
       transform: translateY(12px);
       transition: transform 150ms ease;
+      max-height: 90vh;
+      overflow: auto;
     }
 
     .modal.modal-compo {
@@ -699,7 +766,7 @@
     #teamASlots .slot:nth-child(2) { left: 50%; top: 72%; transform: translate(-50%, -50%); }
     #teamASlots .slot:nth-child(3) { left: 25%; top: 62%; transform: translate(-50%, -50%); }
     #teamASlots .slot:nth-child(4) { left: 75%; top: 62%; transform: translate(-50%, -50%); }
-    #teamASlots .slot:nth-child(5) { left: 50%; top: 52%; transform: translate(-50%, -50%); }
+    #teamASlots .slot:nth-child(5) { left: 50%; top: 56%; transform: translate(-50%, -50%); }
     #teamASlots .slot:nth-child(6) { left: 25%; top: 92%; transform: translate(-50%, -50%); }
     #teamASlots .slot:nth-child(7) { left: 75%; top: 92%; transform: translate(-50%, -50%); }
     #teamASlots .slot:nth-child(8) { left: 15%; top: 78%; transform: translate(-50%, -50%); }
@@ -867,9 +934,31 @@
       nav ul { justify-content: center; }
     }
 
+    @media (max-width: 768px) {
+      header { padding-top: calc(12px + env(safe-area-inset-top)); }
+      .header-content { align-items: center; min-height: auto; }
+      .logo-icon { width: min(300px, 70vw); height: 64px; }
+      nav { display: none; }
+      .burger { display: inline-flex; }
+      .mobile-nav { display: none; }
+      .mobile-nav.show { display: block; }
+    }
+
     @media (max-width: 640px) {
       th, td { padding: 10px 12px; }
       .table-actions { flex-direction: column; align-items: stretch; }
+      .cards-grid { grid-template-columns: 1fr; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 28px; }
+      h2 { font-size: 22px; }
+      h3 { font-size: 18px; }
+      section { padding: var(--space-xl) 0; }
+      .btn { width: 100%; justify-content: center; }
+      .modal-actions { flex-direction: column; }
+      .modal-actions .btn { width: 100%; }
+
+      .table-wrapper { display: none; }
+      .table-card { display: block; }
     }
   </style>
 </head>
@@ -883,14 +972,23 @@
           </div>
           <div class="logo-text"></div>
         </div>
-        <nav>
+        <div class="header-actions">
+          <nav>
           <ul>
             <li><a href="#joueurs">Joueurs</a></li>
             <li><a href="#parties">Parties</a></li>
             <li><a href="#scores">Historique</a></li>
             <li><a href="#kpi">KPIs</a></li>
           </ul>
-        </nav>
+          </nav>
+          <button class="burger" id="burgerBtn" aria-label="Ouvrir le menu" aria-expanded="false">☰</button>
+        </div>
+        <div class="mobile-nav" id="mobileNav">
+          <a href="#joueurs">Joueurs</a>
+          <a href="#parties">Parties</a>
+          <a href="#scores">Historique</a>
+          <a href="#kpi">KPIs</a>
+        </div>
       </div>
     </div>
   </header>
@@ -923,6 +1021,7 @@
           <tbody id="playersBody"></tbody>
         </table>
       </div>
+      <div id="playersCards"></div>
     </div>
   </section>
 
@@ -971,6 +1070,7 @@
           <tbody id="scoresBody"></tbody>
         </table>
       </div>
+      <div id="scoresCards"></div>
 
       <div class="pagination" id="scoresPagination" style="display:none;">
         <span id="scoresPaginationLabel" class="helper-text"></span>
@@ -1311,6 +1411,7 @@
 
     function renderPlayersTable(filter = '', sortKey = 'winRate', sortDir = 'desc') {
       const tbody = document.getElementById('playersBody');
+      const cards = document.getElementById('playersCards');
       let data = [...playersStats];
 
       if (filter) {
@@ -1339,6 +1440,7 @@
 
       if (!data.length) {
         tbody.innerHTML = '<tr><td colspan="7" class="text-center">Aucun joueur.</td></tr>';
+        cards.innerHTML = '<div class="empty-state">Aucun joueur.</div>';
         return;
       }
 
@@ -1366,6 +1468,33 @@
               <button class="btn btn-muted btn-sm" data-action="delete-player">🗑</button>
             </td>
           </tr>
+        `;
+      }).join('');
+
+      cards.innerHTML = data.map(player => {
+        const results = player.recentForm || [];
+        const dots = results.map(result => {
+          const cls = result === 'W' ? 'form-win' : result === 'L' ? 'form-loss' : 'form-draw';
+          return `<span class="form-dot ${cls}">${result}</span>`;
+        }).join('');
+        const missing = Math.max(0, 5 - results.length);
+        const empties = Array.from({ length: missing }).map(() => '<span class="form-dot form-empty">•</span>').join('');
+
+        return `
+          <div class="table-card" data-player-id="${player.id}">
+            <div class="table-card-row"><span class="table-card-label">Joueur</span><span class="table-card-value"><strong>${player.name}</strong></span></div>
+            <div class="table-card-row"><span class="table-card-label">Matchs</span><span class="table-card-value">${player.games}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Victoires</span><span class="table-card-value">${player.wins}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Taux</span><span class="table-card-value">${player.winRate}%</span></div>
+            <div class="table-card-row"><span class="table-card-label">Buts/match</span><span class="table-card-value">${player.avgGoalsForPerMatch === null ? '—' : player.avgGoalsForPerMatch}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Forme</span><span class="table-card-value"><span class="form-indicator">${dots}${empties}</span></span></div>
+            <div class="table-card-row"><span class="table-card-label">Actions</span>
+              <span class="table-card-value">
+                <button class="btn btn-muted btn-sm" data-action="edit-player">✏️</button>
+                <button class="btn btn-muted btn-sm" data-action="delete-player">🗑</button>
+              </span>
+            </div>
+          </div>
         `;
       }).join('');
     }
@@ -1440,12 +1569,14 @@
 
     function renderScoresTable() {
       const tbody = document.getElementById('scoresBody');
+      const cards = document.getElementById('scoresCards');
       const empty = document.getElementById('scoresEmpty');
       const tableWrapper = tbody.closest('.table-wrapper');
 
       if (!scoresState.items.length) {
         tableWrapper.style.display = 'none';
         empty.style.display = 'block';
+        cards.innerHTML = '';
         updateScoresPagination();
         return;
       }
@@ -1478,6 +1609,34 @@
             <td class="text-center"><span class="score-cell ${tie ? '' : (!teamAWins ? 'score-winner' : 'score-loser')}">${match.team_b_score}</span></td>
             <td><span class="winner-badge ${tie ? 'tie' : ''}">🏆 ${winnerLabel}</span></td>
           </tr>
+        `;
+      }).join('');
+
+      cards.innerHTML = scoresState.items.map(match => {
+        const teamALabel = buildTeamLabel(match.teamA || []);
+        const teamBLabel = buildTeamLabel(match.teamB || []);
+        if (!teamALabel || !teamBLabel) {
+          const rosterLabel = buildRosterLabel(match.roster || []);
+          return `
+            <div class="table-card">
+              <div class="table-card-row"><span class="table-card-label">Date</span><span class="table-card-value">${formatDateShort(match.played_at)}</span></div>
+              <div class="table-card-row"><span class="table-card-label">Compo</span><span class="table-card-value">Manquante</span></div>
+              <div class="table-card-row"><span class="table-card-label">Roster</span><span class="table-card-value">${rosterLabel || '—'}</span></div>
+            </div>
+          `;
+        }
+        const tie = match.team_a_score === match.team_b_score;
+        const teamAWins = match.team_a_score > match.team_b_score;
+        const winnerLabel = tie ? 'Égalité' : (teamAWins ? teamALabel : teamBLabel);
+        return `
+          <div class="table-card">
+            <div class="table-card-row"><span class="table-card-label">Date</span><span class="table-card-value">${formatDateShort(match.played_at)}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Équipe A</span><span class="table-card-value">${teamALabel}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Score A</span><span class="table-card-value">${match.team_a_score}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Équipe B</span><span class="table-card-value">${teamBLabel}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Score B</span><span class="table-card-value">${match.team_b_score}</span></div>
+            <div class="table-card-row"><span class="table-card-label">Vainqueur</span><span class="table-card-value">${winnerLabel}</span></div>
+          </div>
         `;
       }).join('');
 
@@ -1727,7 +1886,7 @@
 
       const emptySlot = (teamKey, index) => `
         <div class="slot" data-team="${teamKey}" data-index="${index}" title="">
-          Slot ${index + 1}
+          Joueur ${index + 1}
         </div>
       `;
 
@@ -2265,6 +2424,25 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      const burgerBtn = document.getElementById('burgerBtn');
+      const mobileNav = document.getElementById('mobileNav');
+      if (burgerBtn && mobileNav) {
+        burgerBtn.addEventListener('click', () => {
+          const isOpen = mobileNav.classList.toggle('show');
+          burgerBtn.setAttribute('aria-expanded', String(isOpen));
+        });
+        mobileNav.querySelectorAll('a').forEach(link => {
+          link.addEventListener('click', () => {
+            mobileNav.classList.remove('show');
+            burgerBtn.setAttribute('aria-expanded', 'false');
+          });
+        });
+        document.addEventListener('click', (event) => {
+          if (mobileNav.contains(event.target) || burgerBtn.contains(event.target)) return;
+          mobileNav.classList.remove('show');
+          burgerBtn.setAttribute('aria-expanded', 'false');
+        });
+      }
       setupModals();
       setupActions();
       setupSort();
