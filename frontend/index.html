@@ -311,6 +311,39 @@
       overflow-x: auto;
     }
 
+    .table-scroll {
+      position: relative;
+    }
+
+    .table-scroll::before,
+    .table-scroll::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 24px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 150ms ease;
+    }
+
+    .table-scroll::before {
+      left: 0;
+      background: linear-gradient(90deg, rgba(250,250,251,0.95), rgba(250,250,251,0));
+    }
+
+    .table-scroll::after {
+      right: 0;
+      background: linear-gradient(270deg, rgba(250,250,251,0.95), rgba(250,250,251,0));
+    }
+
+    @media (max-width: 640px) {
+      #joueurs .table-scroll::before,
+      #joueurs .table-scroll::after {
+        opacity: 1;
+      }
+    }
+
     .table-card {
       display: none;
       background: var(--white);
@@ -959,6 +992,7 @@
 
       .table-wrapper { display: none; }
       .table-card { display: block; }
+      #joueurs .table-wrapper { display: block; }
     }
   </style>
 </head>
@@ -1005,7 +1039,7 @@
         <button class="btn btn-primary" id="addPlayerBtn">+ Ajouter un joueur</button>
       </div>
 
-      <div class="table-wrapper">
+      <div class="table-wrapper table-scroll">
         <table id="playersTable">
           <thead>
             <tr>
