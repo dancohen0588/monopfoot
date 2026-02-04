@@ -667,6 +667,11 @@
       margin-bottom: 12px;
     }
 
+    .team-slots.drag-over {
+      box-shadow: 0 0 0 2px rgba(255,122,26,0.25);
+      border-radius: 12px;
+    }
+
     .slot {
       background: rgba(255,255,255,0.8);
       border: 1.5px dashed #D1D5DB;
@@ -1076,6 +1081,7 @@
       <form id="scoreForm">
         <div class="modal-body">
           <div class="helper-text" id="scoreTeams"></div>
+          <div class="inline-error" id="scoreRosterError" style="display:none;"></div>
           <div class="form-group">
             <label for="teamAScore">Score équipe A *</label>
             <input id="teamAScore" type="number" min="0" required>
@@ -1389,13 +1395,14 @@
             </div>
             <div class="match-kpis">
               <div class="match-kpi">Score final<strong>${isPlayed ? `${match.team_a_score} - ${match.team_b_score}` : '—'}</strong></div>
-              <div class="match-kpi">Vainqueur<strong>${isPlayed ? winner : '—'}</strong></div>
+              <div class="match-kpi">Vainqueur<strong>${isPlayed && compoReady ? winner : '—'}</strong></div>
+              ${isPlayed && !compoReady ? '<div class="match-kpi">Compo<strong>Manquante</strong></div>' : ''}
             </div>
             <div class="card-actions">
               <button class="btn btn-secondary btn-sm" data-action="edit-match" ${isPlayed ? 'disabled' : ''}>✏️ Modifier</button>
               <button class="btn btn-secondary btn-sm" data-action="delete-match">🗑 Supprimer</button>
-              <button class="btn btn-secondary btn-sm" data-action="edit-compo">🧩 Compo</button>
-              <button class="btn btn-primary btn-sm" data-action="score-match" ${compoReady ? '' : 'disabled'}>⚽ Saisir score</button>
+              <button class="btn btn-secondary btn-sm" data-action="edit-compo" ${match.roster?.length ? '' : 'disabled'}>🧩 Compo</button>
+              <button class="btn btn-primary btn-sm" data-action="score-match" ${match.roster?.length ? '' : 'disabled'}>⚽ Saisir score</button>
               <button class="btn btn-muted btn-sm" data-action="copy-match">📱 Copier WhatsApp</button>
             </div>
           </div>
@@ -1532,8 +1539,8 @@
     };
 
     let compoState = {
-      teamA: Array(5).fill(null),
-      teamB: Array(5).fill(null),
+      teamA: [],
+      teamB: [],
       activePlayerId: null
     };
 
@@ -1565,6 +1572,18 @@
       rosterError.style.display = 'block';
     }
 
+    function showScoreError(message = '') {
+      const scoreError = document.getElementById('scoreRosterError');
+      if (!scoreError) return;
+      if (!message) {
+        scoreError.style.display = 'none';
+        scoreError.textContent = '';
+        return;
+      }
+      scoreError.textContent = message;
+      scoreError.style.display = 'block';
+    }
+
     function updateRosterUI() {
       const rosterCount = document.getElementById('rosterCount');
       const rosterChips = document.getElementById('rosterChips');
@@ -1575,8 +1594,8 @@
       rosterCount.textContent = String(rosterState.selectedIds.length);
 
       const rosterSet = new Set(rosterState.selectedIds);
-      compoState.teamA = compoState.teamA.map(id => (id && rosterSet.has(id) ? id : null));
-      compoState.teamB = compoState.teamB.map(id => (id && rosterSet.has(id) ? id : null));
+      compoState.teamA = compoState.teamA.filter(id => id && rosterSet.has(id));
+      compoState.teamB = compoState.teamB.filter(id => id && rosterSet.has(id));
 
       if (!rosterState.selectedIds.length) {
         rosterChips.innerHTML = '<span class="helper-text">Aucun joueur sélectionné.</span>';
@@ -1614,14 +1633,14 @@
         rosterSelect.style.display = 'none';
       }
 
-      openCompoBtn.style.display = rosterState.selectedIds.length === 10 ? 'inline-flex' : 'none';
+      openCompoBtn.style.display = rosterState.selectedIds.length >= 1 ? 'inline-flex' : 'none';
       saveBtn.disabled = false;
     }
 
     function resetCompoState() {
       compoState = {
-        teamA: Array(5).fill(null),
-        teamB: Array(5).fill(null),
+        teamA: [],
+        teamB: [],
         activePlayerId: null
       };
     }
@@ -1629,13 +1648,8 @@
     function fillCompoFromMatch(match) {
       resetCompoState();
       const fillTeam = (teamKey, playersList) => {
-        const slots = compoState[teamKey];
-        (playersList || []).forEach(player => {
-          const position = Number(player.position);
-          if (Number.isInteger(position) && position >= 1 && position <= 5) {
-            slots[position - 1] = player.id;
-          }
-        });
+        const sorted = [...(playersList || [])].sort((a, b) => (a.position || 0) - (b.position || 0));
+        compoState[teamKey] = sorted.map(player => player.id);
       };
       fillTeam('teamA', match?.teamA || []);
       fillTeam('teamB', match?.teamB || []);
@@ -1647,22 +1661,7 @@
 
     function isCompoComplete() {
       const allIds = getCompoAssignedIds();
-      return allIds.length === 10 && new Set(allIds).size === 10;
-    }
-
-    function assignPlayerToSlot(teamKey, index, playerId) {
-      if (!playerId) return;
-      ['teamA', 'teamB'].forEach(team => {
-        compoState[team] = compoState[team].map(id => (id === playerId ? null : id));
-      });
-      compoState[teamKey][index] = playerId;
-      compoState.activePlayerId = null;
-      renderCompo();
-    }
-
-    function clearSlot(teamKey, index) {
-      compoState[teamKey][index] = null;
-      renderCompo();
+      return allIds.length >= 1 && new Set(allIds).size === allIds.length;
     }
 
     function renderCompo() {
@@ -1688,20 +1687,23 @@
           }).join('')
         : '<div class="helper-text">Tous les joueurs sont placés.</div>';
 
-      const renderSlot = (teamKey, index) => {
-        const playerId = compoState[teamKey][index];
+      const renderSlot = (teamKey, playerId, index) => {
         const player = playerId ? getPlayerById(playerId) : null;
-        const label = player ? player.name : `Slot ${index + 1}`;
-        const filledClass = player ? 'filled' : '';
+        const label = player ? player.name : '';
         return `
-          <div class="slot ${filledClass}" data-team="${teamKey}" data-index="${index}" title="${player ? player.name : ''}">
+          <div class="slot filled" data-team="${teamKey}" data-index="${index}" data-player-id="${playerId}" title="${label}">
             ${label}
           </div>
         `;
       };
 
-      teamASlots.innerHTML = Array.from({ length: 5 }, (_, idx) => renderSlot('teamA', idx)).join('');
-      teamBSlots.innerHTML = Array.from({ length: 5 }, (_, idx) => renderSlot('teamB', idx)).join('');
+      teamASlots.innerHTML = compoState.teamA.length
+        ? compoState.teamA.map((playerId, idx) => renderSlot('teamA', playerId, idx)).join('')
+        : '<div class="helper-text">Déposez des joueurs ici.</div>';
+
+      teamBSlots.innerHTML = compoState.teamB.length
+        ? compoState.teamB.map((playerId, idx) => renderSlot('teamB', playerId, idx)).join('')
+        : '<div class="helper-text">Déposez des joueurs ici.</div>';
 
       saveBtn.disabled = !isCompoComplete();
 
@@ -1719,39 +1721,58 @@
         });
       });
 
-      document.querySelectorAll('#teamASlots .slot, #teamBSlots .slot').forEach(slot => {
-        slot.addEventListener('dragover', (event) => {
+      const registerDropZone = (container, teamKey) => {
+        container.addEventListener('dragover', (event) => {
           event.preventDefault();
-          slot.classList.add('drag-over');
+          container.classList.add('drag-over');
         });
-        slot.addEventListener('dragleave', () => slot.classList.remove('drag-over'));
-        slot.addEventListener('drop', (event) => {
+        container.addEventListener('dragleave', () => container.classList.remove('drag-over'));
+        container.addEventListener('drop', (event) => {
           event.preventDefault();
-          slot.classList.remove('drag-over');
+          container.classList.remove('drag-over');
           const playerId = event.dataTransfer.getData('text/plain');
-          const teamKey = slot.dataset.team;
-          const index = Number(slot.dataset.index);
-          assignPlayerToSlot(teamKey, index, playerId);
+          if (!playerId) return;
+          if (compoState[teamKey].includes(playerId)) return;
+          ['teamA', 'teamB'].forEach(team => {
+            compoState[team] = compoState[team].filter(id => id !== playerId);
+          });
+          compoState[teamKey].push(playerId);
+          compoState.activePlayerId = null;
+          renderCompo();
         });
+      };
+
+      registerDropZone(teamASlots, 'teamA');
+      registerDropZone(teamBSlots, 'teamB');
+
+      document.querySelectorAll('#teamASlots .slot, #teamBSlots .slot').forEach(slot => {
         slot.addEventListener('click', () => {
           const teamKey = slot.dataset.team;
-          const index = Number(slot.dataset.index);
+          const playerId = slot.dataset.playerId;
           if (compoState.activePlayerId) {
-            assignPlayerToSlot(teamKey, index, compoState.activePlayerId);
+            if (compoState.activePlayerId === playerId) return;
+            ['teamA', 'teamB'].forEach(team => {
+              compoState[team] = compoState[team].filter(id => id !== compoState.activePlayerId);
+            });
+            compoState[teamKey] = compoState[teamKey].filter(id => id !== playerId);
+            compoState[teamKey].push(compoState.activePlayerId);
+            compoState.activePlayerId = null;
+            renderCompo();
             return;
           }
-          if (compoState[teamKey][index]) {
-            clearSlot(teamKey, index);
-          }
+          compoState[teamKey] = compoState[teamKey].filter(id => id !== playerId);
+          renderCompo();
         });
       });
     }
 
     function buildCompoPayload() {
-      const buildTeamPayload = (teamKey) => compoState[teamKey].map((playerId, index) => ({
-        player_id: playerId,
-        position: index + 1
-      }));
+      const buildTeamPayload = (teamKey) => compoState[teamKey]
+        .filter(Boolean)
+        .map((playerId, index) => ({
+          player_id: playerId,
+          position: index + 1
+        }));
       return {
         teamA: buildTeamPayload('teamA'),
         teamB: buildTeamPayload('teamB')
@@ -1824,7 +1845,7 @@
       });
 
       document.getElementById('openCompoBtn').addEventListener('click', () => {
-        if (rosterState.selectedIds.length !== 10) {
+        if (rosterState.selectedIds.length < 1) {
           return;
         }
         if (!rosterState.matchId) {
@@ -1842,9 +1863,8 @@
           .sort((a, b) => a.name.localeCompare(b.name));
         resetCompoState();
         sorted.forEach((player, idx) => {
-          const targetTeam = idx < 5 ? 'teamA' : 'teamB';
-          const pos = idx < 5 ? idx : idx - 5;
-          compoState[targetTeam][pos] = player.id;
+          const targetTeam = idx % 2 === 0 ? 'teamA' : 'teamB';
+          compoState[targetTeam].push(player.id);
         });
         renderCompo();
       });
@@ -1924,9 +1944,14 @@
 
       window.openScoreModal = (match) => {
         scoreForm.dataset.entityId = match.id;
+        scoreForm.dataset.rosterCount = String(match.roster ? match.roster.length : 0);
         document.getElementById('scoreTeams').textContent = `Équipe A: ${buildTeamLabel(match.teamA || [])} | Équipe B: ${buildTeamLabel(match.teamB || [])}`;
         document.getElementById('teamAScore').value = match.team_a_score ?? '';
         document.getElementById('teamBScore').value = match.team_b_score ?? '';
+        showScoreError('');
+        if (!match.roster || match.roster.length < 1) {
+          showScoreError('Ajoute au moins 1 joueur au roster avant de saisir un score.');
+        }
         scoreModal.classList.add('show');
       };
 
@@ -2017,6 +2042,11 @@
       scoreForm.addEventListener('submit', async (event) => {
         event.preventDefault();
         if (isSavingScore) return;
+        const rosterCount = Number(scoreForm.dataset.rosterCount || 0);
+        if (rosterCount < 1) {
+          showScoreError('Ajoute au moins 1 joueur au roster avant de saisir un score.');
+          return;
+        }
         const id = scoreForm.dataset.entityId;
         const scoreA = Number(document.getElementById('teamAScore').value);
         const scoreB = Number(document.getElementById('teamBScore').value);

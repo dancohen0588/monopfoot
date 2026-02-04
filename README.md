@@ -137,20 +137,20 @@ Envoyer un header `X-Idempotency-Key` (UUID). Les requêtes identiques reçues a
 {
   "teamA": [
     { "player_id": "uuid1", "position": 1 },
-    { "player_id": "uuid2", "position": 2 },
-    { "player_id": "uuid3", "position": 3 },
-    { "player_id": "uuid4", "position": 4 },
-    { "player_id": "uuid5", "position": 5 }
+    { "player_id": "uuid2", "position": 2 }
   ],
   "teamB": [
-    { "player_id": "uuid6", "position": 1 },
-    { "player_id": "uuid7", "position": 2 },
-    { "player_id": "uuid8", "position": 3 },
-    { "player_id": "uuid9", "position": 4 },
-    { "player_id": "uuid10", "position": 5 }
+    { "player_id": "uuid3", "position": 1 }
   ]
 }
 ```
+
+`teamA` et `teamB` sont variables (0..N). Au moins 1 joueur doit être assigné au total. Les `player_id` doivent être uniques et appartenir au roster du match. Positions positives et uniques par équipe.
+
+#### Règles score & statistiques
+
+- Un score peut être saisi dès que le roster contient au moins 1 joueur.
+- Les KPIs et stats joueurs n’incluent que les matchs joués avec une compo existante (au moins 1 joueur assigné à une équipe).
 
 ### KPIs
 
