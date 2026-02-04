@@ -25,9 +25,7 @@ router.get('/', async (req, res) => {
         SELECT 1
         FROM match_players mp
         WHERE mp.match_id = m.id
-        GROUP BY mp.match_id
-        HAVING COUNT(*) = 10
-           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+          AND mp.team IS NOT NULL
       )
   `;
 
@@ -41,9 +39,7 @@ router.get('/', async (req, res) => {
         SELECT 1
         FROM match_players mp
         WHERE mp.match_id = m.id
-        GROUP BY mp.match_id
-        HAVING COUNT(*) = 10
-           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+          AND mp.team IS NOT NULL
       )
     GROUP BY TO_CHAR(m.played_at, 'YYYY-MM')
     ORDER BY month ASC
@@ -51,11 +47,9 @@ router.get('/', async (req, res) => {
 
   const topWinnersSql = `
     WITH complete_matches AS (
-      SELECT match_id
+      SELECT DISTINCT match_id
       FROM match_players
-      GROUP BY match_id
-      HAVING COUNT(*) = 10
-         AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      WHERE team IS NOT NULL
     ),
     winners AS (
       SELECT
@@ -90,11 +84,9 @@ router.get('/', async (req, res) => {
 
   const topScorerSql = `
     WITH complete_matches AS (
-      SELECT match_id
+      SELECT DISTINCT match_id
       FROM match_players
-      GROUP BY match_id
-      HAVING COUNT(*) = 10
-         AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+      WHERE team IS NOT NULL
     ),
     match_scores AS (
       SELECT

@@ -88,11 +88,9 @@ router.get('/stats', async (req, res) => {
 
     const statsSql = `
       WITH complete_matches AS (
-        SELECT match_id
+        SELECT DISTINCT match_id
         FROM match_players
-        GROUP BY match_id
-        HAVING COUNT(*) = 10
-           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+        WHERE team IS NOT NULL
       ),
       match_scores AS (
         SELECT
@@ -129,11 +127,9 @@ router.get('/stats', async (req, res) => {
 
     const recentFormSql = `
       WITH complete_matches AS (
-        SELECT match_id
+        SELECT DISTINCT match_id
         FROM match_players
-        GROUP BY match_id
-        HAVING COUNT(*) = 10
-           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
+        WHERE team IS NOT NULL
       ),
       match_scores AS (
         SELECT

@@ -24,7 +24,7 @@ function normalizeMatchRow(row) {
   const teamA = row.teamA || [];
   const teamB = row.teamB || [];
   const roster = row.roster || [];
-  const compoReady = roster.length === 10 && teamA.length === 5 && teamB.length === 5;
+  const compoReady = (teamA.length + teamB.length) > 0;
 
   return {
     id: row.id,
@@ -71,8 +71,8 @@ function validateCompoPayload(teamA, teamB) {
   if (!Array.isArray(teamA) || !Array.isArray(teamB)) {
     return { error: 'Les équipes A et B doivent être des listes de joueurs.' };
   }
-  if (teamA.length !== 5 || teamB.length !== 5) {
-    return { error: 'Chaque équipe doit contenir exactement 5 joueurs.' };
+  if (teamA.length + teamB.length < 1) {
+    return { error: 'La composition doit contenir au moins un joueur.' };
   }
 
   const normalizeEntry = (entry) => ({
@@ -89,16 +89,16 @@ function validateCompoPayload(teamA, teamB) {
   }
 
   const allIds = allEntries.map(entry => entry.player_id);
-  if (new Set(allIds).size !== 10) {
-    return { error: 'Les 10 joueurs doivent être distincts.' };
+  if (new Set(allIds).size !== allIds.length) {
+    return { error: 'Les joueurs doivent être distincts.' };
   }
 
   const validatePositions = (entries, teamLabel) => {
     const positions = entries.map(entry => entry.position);
-    if (positions.some(pos => !Number.isInteger(pos) || pos < 1 || pos > 5)) {
-      return `Les positions de l'équipe ${teamLabel} doivent être entre 1 et 5.`;
+    if (positions.some(pos => !Number.isInteger(pos) || pos < 1)) {
+      return `Les positions de l'équipe ${teamLabel} doivent être des entiers positifs.`;
     }
-    if (new Set(positions).size !== 5) {
+    if (new Set(positions).size !== positions.length) {
       return `Les positions de l'équipe ${teamLabel} doivent être uniques.`;
     }
     return null;
@@ -221,14 +221,6 @@ router.get('/played', async (req, res) => {
     SELECT COUNT(*) AS total
     FROM matches m
     WHERE m.status = 'played'
-      AND EXISTS (
-        SELECT 1
-        FROM match_players mp
-        WHERE mp.match_id = m.id
-        GROUP BY mp.match_id
-        HAVING COUNT(*) = 10
-           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
-      )
     ${filterClause}
   `;
 
@@ -236,14 +228,6 @@ router.get('/played', async (req, res) => {
     SELECT *
     FROM matches m
     WHERE m.status = 'played'
-      AND EXISTS (
-        SELECT 1
-        FROM match_players mp
-        WHERE mp.match_id = m.id
-        GROUP BY mp.match_id
-        HAVING COUNT(*) = 10
-           AND COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) = 10
-      )
     ${filterClause}
     ORDER BY m.played_at DESC, m.created_at DESC
     LIMIT $${filterParams.length + 1} OFFSET $${filterParams.length + 2}
@@ -294,13 +278,17 @@ router.get('/played', async (req, res) => {
     });
 
     const items = Array.from(map.values()).map(row => {
-      const winner = row.team_a_score === row.team_b_score
-        ? 'D'
-        : row.team_a_score > row.team_b_score
-          ? 'A'
-          : 'B';
+      const normalized = normalizeMatchRow(row);
+      const hasCompo = (normalized.teamA.length + normalized.teamB.length) > 0;
+      const winner = !hasCompo
+        ? 'UNKNOWN'
+        : row.team_a_score === row.team_b_score
+          ? 'D'
+          : row.team_a_score > row.team_b_score
+            ? 'A'
+            : 'B';
       return {
-        ...normalizeMatchRow(row),
+        ...normalized,
         winner
       };
     });
@@ -482,17 +470,13 @@ router.post('/:id/score', async (req, res) => {
       return sendError(res, 404, 'Match introuvable.');
     }
 
-    const compoResult = await db.query(
-      `SELECT COUNT(*) AS total,
-              COUNT(*) FILTER (WHERE team IS NOT NULL AND position IS NOT NULL) AS complete
-       FROM match_players
-       WHERE match_id = $1`,
+    const rosterResult = await db.query(
+      'SELECT COUNT(*) AS total FROM match_players WHERE match_id = $1',
       [id]
     );
-    const totalPlayers = Number(compoResult.rows?.[0]?.total || 0);
-    const completePlayers = Number(compoResult.rows?.[0]?.complete || 0);
-    if (totalPlayers !== 10 || completePlayers !== 10) {
-      return sendError(res, 400, 'La composition doit être complète avant de saisir un score.');
+    const totalPlayers = Number(rosterResult.rows?.[0]?.total || 0);
+    if (totalPlayers < 1) {
+      return sendError(res, 400, 'Le score ne peut pas être saisi sans joueur dans le roster.');
     }
 
     const updateSql = `
@@ -553,14 +537,11 @@ router.post('/:id/compo', async (req, res) => {
       [id]
     );
     const rosterIds = (rosterResult.rows || []).map(row => String(row.player_id));
-    if (rosterIds.length !== 10) {
-      return sendError(res, 400, 'Le roster du match est incomplet.');
-    }
 
     const rosterSet = new Set(rosterIds);
     const allIncoming = [...validation.teamA, ...validation.teamB].map(entry => entry.player_id);
-    if (new Set(allIncoming).size !== 10) {
-      return sendError(res, 400, 'Les 10 joueurs doivent être distincts.');
+    if (new Set(allIncoming).size !== allIncoming.length) {
+      return sendError(res, 400, 'Les joueurs doivent être distincts.' );
     }
     for (const playerId of allIncoming) {
       if (!rosterSet.has(playerId)) {
