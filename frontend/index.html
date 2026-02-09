@@ -1373,6 +1373,13 @@
       return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
     }
 
+    function toIsoFromLocalInput(localValue) {
+      if (!localValue) return '';
+      const date = new Date(localValue);
+      if (Number.isNaN(date.getTime())) return '';
+      return date.toISOString();
+    }
+
     function getDisplayName(player) {
       if (!player) return 'Joueur inconnu';
       if (player.name) return player.name;
@@ -2262,7 +2269,7 @@
         event.preventDefault();
         if (isSavingMatch) return;
         const payload = {
-          played_at: document.getElementById('matchPlayedAt').value,
+          played_at: toIsoFromLocalInput(document.getElementById('matchPlayedAt').value),
           location: document.getElementById('matchLocation').value.trim(),
           reservation_url: document.getElementById('matchReservation').value.trim(),
           players: [...rosterState.selectedIds]

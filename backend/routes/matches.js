@@ -376,7 +376,20 @@ router.put('/:id', async (req, res) => {
   const playedAt = (req.body.played_at || '').trim();
   const location = (req.body.location || '').trim();
   const reservationUrl = (req.body.reservation_url || '').trim();
+  const hasPlayersPayload = Object.prototype.hasOwnProperty.call(req.body, 'players');
   const players = req.body.players;
+  const parsedPlayedAt = playedAt ? new Date(playedAt) : null;
+  console.log('[matches.put] payload', {
+    id,
+    playedAt,
+    playedAtIso: parsedPlayedAt && !Number.isNaN(parsedPlayedAt.getTime()) ? parsedPlayedAt.toISOString() : null,
+    playedAtLocal: parsedPlayedAt && !Number.isNaN(parsedPlayedAt.getTime()) ? parsedPlayedAt.toString() : null,
+    location,
+    reservationUrl: reservationUrl || null,
+    hasPlayersPayload,
+    playersCount: Array.isArray(players) ? players.length : null,
+    playersType: Array.isArray(players) ? 'array' : typeof players
+  });
 
   if (!playedAt || !isValidDateTime(playedAt)) {
     return sendError(res, 400, 'La date/heure est invalide.');
@@ -386,9 +399,12 @@ router.put('/:id', async (req, res) => {
     return sendError(res, 400, 'Le lieu est obligatoire.');
   }
 
-  const rosterValidation = validatePlayersRoster(players);
-  if (rosterValidation.error) {
-    return sendError(res, 400, rosterValidation.error);
+  let rosterValidation = { players: [] };
+  if (hasPlayersPayload) {
+    rosterValidation = validatePlayersRoster(players);
+    if (rosterValidation.error) {
+      return sendError(res, 400, rosterValidation.error);
+    }
   }
 
   try {
@@ -410,15 +426,40 @@ router.put('/:id', async (req, res) => {
     `;
     await db.query(updateSql, [playedAt, location, reservationUrl || null, id]);
 
-    await db.query('DELETE FROM match_players WHERE match_id = $1', [id]);
+    if (hasPlayersPayload) {
+      const existingPlayersResult = await db.query(
+        'SELECT player_id, team, position FROM match_players WHERE match_id = $1',
+        [id]
+      );
+      const existingRows = existingPlayersResult.rows || [];
+      const existingIds = new Set(existingRows.map(row => String(row.player_id)));
+      const incomingIds = new Set(rosterValidation.players);
 
-    const insertPlayerSql = `
-      INSERT INTO match_players (match_id, player_id, team, position)
-      VALUES ($1, $2, $3, $4)
-    `;
+      const toDelete = [...existingIds].filter(playerId => !incomingIds.has(playerId));
+      const toInsert = rosterValidation.players.filter(playerId => !existingIds.has(playerId));
 
-    for (let i = 0; i < rosterValidation.players.length; i += 1) {
-      await db.query(insertPlayerSql, [id, rosterValidation.players[i], null, null]);
+      console.log('[matches.put] roster diff', {
+        id,
+        incomingCount: rosterValidation.players.length,
+        existingCount: existingIds.size,
+        toDeleteCount: toDelete.length,
+        toInsertCount: toInsert.length
+      });
+
+      if (toDelete.length) {
+        await db.query(
+          'DELETE FROM match_players WHERE match_id = $1 AND player_id = ANY($2)',
+          [id, toDelete]
+        );
+      }
+
+      const insertPlayerSql = `
+        INSERT INTO match_players (match_id, player_id, team, position)
+        VALUES ($1, $2, $3, $4)
+      `;
+      for (let i = 0; i < toInsert.length; i += 1) {
+        await db.query(insertPlayerSql, [id, toInsert[i], null, null]);
+      }
     }
 
     await db.query('COMMIT');
