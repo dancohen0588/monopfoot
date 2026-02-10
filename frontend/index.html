@@ -880,6 +880,47 @@
       color: var(--warning);
     }
 
+    .mvp-grid {
+      display: flex;
+      gap: 20px;
+      margin: 15px 0;
+    }
+
+    .team-column {
+      flex: 1;
+    }
+
+    .mvp-candidate {
+      padding: 10px;
+      margin: 5px 0;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mvp-candidate:hover {
+      border-color: #4CAF50;
+      background: #f5fff5;
+    }
+
+    .mvp-candidate.selected {
+      border-color: #4CAF50;
+      background: #e8f5e9;
+    }
+
+    .mvp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      background: linear-gradient(135deg, #FFD700, #FFA500);
+      color: #333;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: bold;
+    }
+
     .form-indicator {
       display: flex;
       gap: 4px;
@@ -1083,6 +1124,7 @@
               <th>Équipe B</th>
               <th class="text-center">Score B</th>
               <th>Vainqueur</th>
+              <th>MVP</th>
             </tr>
           </thead>
           <tbody id="scoresBody"></tbody>
@@ -1245,6 +1287,40 @@
     </div>
   </div>
 
+  <!-- Modal MVP -->
+  <div class="modal-backdrop" id="mvpModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="mvpModalTitle">
+      <div class="modal-header">
+        <div class="modal-title" id="mvpModalTitle">🏆 Voter pour le MVP</div>
+        <button class="icon-btn" id="closeMvpModalBtn">✖</button>
+      </div>
+      <div class="modal-body">
+        <div class="helper-text">Match du <span id="mvp-match-date"></span></div>
+        <div class="form-group" id="mvp-voter-select">
+          <label for="voter-select">Qui êtes-vous ?</label>
+          <select id="voter-select"></select>
+        </div>
+        <div id="mvp-candidates">
+          <label class="helper-text">Votez pour le meilleur joueur :</label>
+          <div class="mvp-grid">
+            <div class="team-column">
+              <h4>Équipe A</h4>
+              <div id="team-a-players"></div>
+            </div>
+            <div class="team-column">
+              <h4>Équipe B</h4>
+              <div id="team-b-players"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" id="cancelMvpModalBtn">Annuler</button>
+          <button type="button" class="btn btn-primary" id="btn-submit-vote" disabled>Voter</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     const API_BASE_URL = (() => {
       const localHosts = ['localhost', '127.0.0.1'];
@@ -1255,6 +1331,7 @@
 
     const API_PLAYERS = `${API_BASE_URL}/api/players`;
     const API_PLAYER_STATS = `${API_BASE_URL}/api/players/stats`;
+    const API_PLAYERS_MVP_STATS = `${API_BASE_URL}/api/players/mvp-stats`;
     const API_MATCHES = `${API_BASE_URL}/api/matches`;
     const API_KPIS = `${API_BASE_URL}/api/kpis`;
 
@@ -1275,7 +1352,9 @@
       playedMatchesCount: 0,
       matchesByMonth: [],
       topWinners: [],
-      topScorer: null
+      topScorer: null,
+      totalMvpVotes: 0,
+      mvpLeaderboard: []
     };
 
     const PLAYERS_STATE_KEY = 'monopfoot.players.state';
@@ -1373,13 +1452,6 @@
       return new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
     }
 
-    function toIsoFromLocalInput(localValue) {
-      if (!localValue) return '';
-      const date = new Date(localValue);
-      if (Number.isNaN(date.getTime())) return '';
-      return date.toISOString();
-    }
-
     function getDisplayName(player) {
       if (!player) return 'Joueur inconnu';
       if (player.name) return player.name;
@@ -1392,6 +1464,11 @@
 
     function buildRosterLabel(roster) {
       return (roster || []).map(p => getDisplayName(p)).join(', ');
+    }
+
+    function buildMvpLabel(match) {
+      if (!match?.mvp?.length) return '';
+      return match.mvp.map(mvp => `${mvp.first_name} ${mvp.last_name}`.trim()).join(' & ');
     }
 
     async function fetchJson(url, options = {}) {
@@ -1519,6 +1596,12 @@
       params.set('offset', String(offset));
       if (playerId) params.set('player_id', String(playerId));
       return fetchJson(`${API_MATCHES}/played?${params.toString()}`);
+    }
+
+    async function fetchMvpStatus(matchId, voterId) {
+      const params = new URLSearchParams();
+      params.set('voter_id', voterId);
+      return fetchJson(`${API_BASE_URL}/api/matches/${matchId}/mvp/status?${params.toString()}`);
     }
 
     async function loadKpis() {
@@ -1703,13 +1786,18 @@
           return `
             <tr>
               <td>${formatDateShort(match.played_at)}</td>
-              <td colspan="5" class="text-center">Compo manquante — roster: ${rosterLabel || '—'}</td>
+              <td colspan="6" class="text-center">Compo manquante — roster: ${rosterLabel || '—'}</td>
             </tr>
           `;
         }
         const tie = match.team_a_score === match.team_b_score;
         const teamAWins = match.team_a_score > match.team_b_score;
         const winnerLabel = tie ? 'Égalité' : (teamAWins ? teamALabel : teamBLabel);
+        const mvpCell = match.mvp_label
+          ? `<span class="mvp-badge">🏆 ${match.mvp_label}</span>`
+          : match.mvp_status === 'can_vote'
+            ? `<button class="btn btn-secondary btn-sm" data-action="mvp-vote" data-match-id="${match.id}">Voter</button>`
+            : `<span class="helper-text">En attente</span>`;
 
         return `
           <tr>
@@ -1719,6 +1807,7 @@
             <td>${teamBLabel}</td>
             <td class="text-center"><span class="score-cell ${tie ? '' : (!teamAWins ? 'score-winner' : 'score-loser')}">${match.team_b_score}</span></td>
             <td><span class="winner-badge ${tie ? 'tie' : ''}">🏆 ${winnerLabel}</span></td>
+            <td>${mvpCell}</td>
           </tr>
         `;
       }).join('');
@@ -1728,6 +1817,111 @@
 
     function updateScoresPagination() {
       updateHistoryPagination();
+    }
+
+    function updateVoteButtonState() {
+      const voterSelect = document.getElementById('voter-select');
+      const btn = document.getElementById('btn-submit-vote');
+      if (!voterSelect || !btn) return;
+      btn.disabled = !(voterSelect.value && selectedMvpCandidate);
+    }
+
+    function selectMvpCandidate(playerId) {
+      document.querySelectorAll('.mvp-candidate.selected').forEach(el => {
+        el.classList.remove('selected');
+      });
+
+      const el = document.querySelector(`.mvp-candidate[data-player-id="${playerId}"]`);
+      if (el) {
+        el.classList.add('selected');
+        selectedMvpCandidate = playerId;
+      }
+
+      updateVoteButtonState();
+    }
+
+    async function openMvpVoteModal(matchId) {
+      currentMvpMatchId = matchId;
+      const matchRes = await fetch(`${API_BASE_URL}/api/matches/${matchId}`);
+      const matchData = await matchRes.json();
+      if (!matchData.success) {
+        showToast('Erreur lors du chargement du match');
+        return;
+      }
+
+      const match = matchData.data;
+      document.getElementById('mvp-match-date').textContent =
+        new Date(match.played_at).toLocaleDateString('fr-FR');
+
+      const voterSelect = document.getElementById('voter-select');
+      voterSelect.innerHTML = '<option value="">-- Sélectionnez votre nom --</option>';
+
+      (match.roster || []).forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        opt.textContent = `${p.first_name} ${p.last_name}`;
+        voterSelect.appendChild(opt);
+      });
+
+      const teamADiv = document.getElementById('team-a-players');
+      const teamBDiv = document.getElementById('team-b-players');
+      teamADiv.innerHTML = '';
+      teamBDiv.innerHTML = '';
+
+      const players = [...(match.teamA || []), ...(match.teamB || [])];
+      players.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'mvp-candidate';
+        div.dataset.playerId = p.id;
+        div.textContent = `${p.first_name} ${p.last_name}`;
+        div.onclick = () => selectMvpCandidate(p.id);
+
+        if ((match.teamA || []).some(player => player.id === p.id)) {
+          teamADiv.appendChild(div);
+        } else {
+          teamBDiv.appendChild(div);
+        }
+      });
+
+      selectedMvpCandidate = null;
+      document.getElementById('btn-submit-vote').disabled = true;
+      document.getElementById('mvpModal').classList.add('show');
+    }
+
+    async function submitMvpVote() {
+      const voterId = document.getElementById('voter-select').value;
+      if (!voterId || !selectedMvpCandidate || !currentMvpMatchId) {
+        showToast('Veuillez sélectionner votre nom et un joueur');
+        return;
+      }
+
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/matches/${currentMvpMatchId}/mvp/vote`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Idempotency-Key': buildIdempotencyKey()
+          },
+          body: JSON.stringify({
+            voter_id: voterId,
+            voted_for_id: selectedMvpCandidate
+          })
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          showToast('Vote enregistré ! 🏆');
+          document.getElementById('mvpModal').classList.remove('show');
+          await loadScores();
+          await loadKpis();
+          renderKpis();
+        } else {
+          showToast(`Erreur : ${data.error.message}`);
+        }
+      } catch (err) {
+        showToast(`Erreur réseau : ${err.message}`);
+      }
     }
 
     function renderKpis() {
@@ -1742,6 +1936,26 @@
           <div style="margin-top: 10px; color: var(--text-muted); font-size: 0.9rem;">
             ${kpiState.playersCount} joueurs inscrits
           </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">🏆 Top MVP</div>
+          ${kpiState.mvpLeaderboard.length ? `
+            <div class="kpi-value">${getDisplayName(kpiState.mvpLeaderboard[0].player)}</div>
+            <div class="helper-text">${kpiState.mvpLeaderboard[0].mvp_count} MVP • ${kpiState.mvpLeaderboard[0].total_votes} votes</div>
+            ${kpiState.mvpLeaderboard.length > 1 ? `
+              <div style="margin-top:8px; display:grid; gap:6px;">
+                ${kpiState.mvpLeaderboard.slice(1).map((entry, idx) => `
+                  <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="card-badge">#${idx + 2}</span>
+                    <div>
+                      <div style="font-weight:600;">${getDisplayName(entry.player)}</div>
+                      <div class="helper-text">${entry.mvp_count} MVP • ${entry.total_votes} votes</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+          ` : '<div class="helper-text">Aucun vote MVP</div>'}
         </div>
         <div class="kpi-card">
           <div class="kpi-title">🏆 Top 3 (victoires)</div>
@@ -1791,6 +2005,9 @@
       matchId: null,
       mode: 'create'
     };
+
+    let selectedMvpCandidate = null;
+    let currentMvpMatchId = null;
 
     let compoState = {
       teamA: [],
@@ -2054,6 +2271,8 @@
 
       const compoModal = document.getElementById('compoModal');
 
+      const mvpModal = document.getElementById('mvpModal');
+
       function closeModal(modal, form) {
         modal.classList.remove('show');
         if (form) {
@@ -2066,6 +2285,14 @@
       function closeCompoModal() {
         compoModal.classList.remove('show');
         compoState.activePlayerId = null;
+      }
+
+      function closeMvpModal() {
+        mvpModal.classList.remove('show');
+        selectedMvpCandidate = null;
+        currentMvpMatchId = null;
+        const btn = document.getElementById('btn-submit-vote');
+        if (btn) btn.disabled = true;
       }
 
       document.getElementById('closePlayerModalBtn').addEventListener('click', () => closeModal(playerModal, playerForm));
@@ -2082,6 +2309,10 @@
 
       document.getElementById('closeCompoModalBtn').addEventListener('click', closeCompoModal);
       compoModal.addEventListener('click', (event) => { if (event.target === compoModal) closeCompoModal(); });
+
+      document.getElementById('closeMvpModalBtn').addEventListener('click', closeMvpModal);
+      document.getElementById('cancelMvpModalBtn').addEventListener('click', closeMvpModal);
+      mvpModal.addEventListener('click', (event) => { if (event.target === mvpModal) closeMvpModal(); });
 
       document.getElementById('addRosterBtn').addEventListener('click', () => {
         const rosterSelect = document.getElementById('rosterSelect');
@@ -2269,7 +2500,7 @@
         event.preventDefault();
         if (isSavingMatch) return;
         const payload = {
-          played_at: toIsoFromLocalInput(document.getElementById('matchPlayedAt').value),
+          played_at: document.getElementById('matchPlayedAt').value,
           location: document.getElementById('matchLocation').value.trim(),
           reservation_url: document.getElementById('matchReservation').value.trim(),
           players: [...rosterState.selectedIds]
@@ -2338,6 +2569,8 @@
     function setupActions() {
       document.getElementById('addPlayerBtn').addEventListener('click', () => openPlayerModal('create'));
       document.getElementById('addMatchBtn').addEventListener('click', () => openMatchModal('create'));
+      document.getElementById('voter-select').addEventListener('change', updateVoteButtonState);
+      document.getElementById('btn-submit-vote').addEventListener('click', submitMvpVote);
 
       const playersPrevBtn = document.getElementById('playersPrevBtn');
       const playersNextBtn = document.getElementById('playersNextBtn');
@@ -2444,6 +2677,14 @@
         }
       });
 
+      document.getElementById('scoresBody').addEventListener('click', (event) => {
+        const button = event.target.closest('[data-action="mvp-vote"]');
+        if (!button) return;
+        const matchId = button.dataset.matchId;
+        if (!matchId) return;
+        openMvpVoteModal(matchId);
+      });
+
       document.getElementById('searchPlayers').addEventListener('input', async (event) => {
         const query = event.target.value;
         playersState.q = query;
@@ -2506,7 +2747,37 @@
         offset: scoresState.offset,
         playerId: scoresState.filterPlayerId
       });
-      scoresState.items = data.items || [];
+      const items = data.items || [];
+      const enriched = await Promise.all(items.map(async (match) => {
+        const isPlayed = match.status === 'played';
+        if (!isPlayed) {
+          return { ...match, mvp_status: 'not_played', mvp: [], mvp_label: '' };
+        }
+
+        let mvpResults = null;
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/matches/${match.id}/mvp`);
+          const json = await res.json();
+          if (json.success) {
+            mvpResults = json.data;
+          }
+        } catch (error) {
+          mvpResults = null;
+        }
+
+        const mvpList = mvpResults?.mvps || [];
+        const hasMvp = mvpList.length > 0;
+        const label = hasMvp ? mvpList.map(mvp => `${mvp.first_name} ${mvp.last_name}`.trim()).join(' & ') : '';
+
+        return {
+          ...match,
+          mvp: mvpList,
+          mvp_label: label,
+          mvp_status: hasMvp ? 'closed' : 'can_vote'
+        };
+      }));
+
+      scoresState.items = enriched;
       scoresState.total = data.pagination?.total ?? 0;
       scoresState.limit = data.pagination?.limit ?? scoresState.limit;
       scoresState.offset = data.pagination?.offset ?? scoresState.offset;
