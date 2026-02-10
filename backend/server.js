@@ -6,6 +6,7 @@ const cors = require('cors');
 const playersRouter = require('./routes/players');
 const matchesRouter = require('./routes/matches');
 const kpisRouter = require('./routes/kpis');
+const mvpRouter = require('./routes/mvp');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -66,6 +67,7 @@ function idempotencyMiddleware(req, res, next) {
 
 app.use('/api/players', idempotencyMiddleware, playersRouter);
 app.use('/api/matches', idempotencyMiddleware, matchesRouter);
+app.use('/api', idempotencyMiddleware, mvpRouter);
 app.use('/api/kpis', kpisRouter);
 
 app.use((req, res) => {

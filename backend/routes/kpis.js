@@ -118,13 +118,32 @@ router.get('/', async (req, res) => {
     LIMIT 1
   `;
 
+  const totalMvpVotesSql = 'SELECT COUNT(*) AS total FROM match_mvp_votes';
+
+  const mvpLeaderboardSql = `
+    SELECT player_id, first_name, last_name, mvp_count, total_votes_received
+    FROM player_mvp_stats
+    ORDER BY mvp_count DESC, total_votes_received DESC, last_name ASC
+    LIMIT 3
+  `;
+
   try {
-    const [playersCountResult, playedMatchesResult, matchesByMonthResult, topWinnersResult, topScorerResult] = await Promise.all([
+    const [
+      playersCountResult,
+      playedMatchesResult,
+      matchesByMonthResult,
+      topWinnersResult,
+      topScorerResult,
+      totalMvpVotesResult,
+      mvpLeaderboardResult
+    ] = await Promise.all([
       db.query(playersCountSql),
       db.query(playedMatchesSql),
       db.query(matchesByMonthSql),
       db.query(topWinnersSql),
-      db.query(topScorerSql)
+      db.query(topScorerSql),
+      db.query(totalMvpVotesSql),
+      db.query(mvpLeaderboardSql)
     ]);
 
     const playersCount = Number(playersCountResult.rows?.[0]?.total || 0);
@@ -149,12 +168,21 @@ router.get('/', async (req, res) => {
         }
       : null;
 
+    const totalMvpVotes = Number(totalMvpVotesResult.rows?.[0]?.total || 0);
+    const mvpLeaderboard = (mvpLeaderboardResult.rows || []).map(row => ({
+      player: { id: row.player_id, first_name: row.first_name, last_name: row.last_name },
+      mvp_count: Number(row.mvp_count) || 0,
+      total_votes: Number(row.total_votes_received) || 0
+    }));
+
     return sendSuccess(res, {
       playersCount,
       playedMatchesCount,
       matchesByMonth,
       topWinners,
-      topScorer
+      topScorer,
+      totalMvpVotes,
+      mvpLeaderboard
     });
   } catch (error) {
     return sendError(res, 500, 'Erreur lors du chargement des KPIs.', error.message);
